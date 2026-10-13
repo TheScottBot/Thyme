@@ -880,3 +880,97 @@ has no automated test, being one equality on a Win32 struct inside the shell;
 it is checked by the WE5 gate only if the author changes the time zone while
 Thyme runs, which the gate does not ask for. The author also approved
 `internal/eventlog`.)
+
+(13 October 2026, later the same day: the author cleared the WE5 gate in the
+words "WE5 gate passed" and pushed a2a6071. CI run 38461479479 passed on all
+three runners, including the Win32 struct size test on both Windows
+architectures.)
+
+## WE6 Plan, 13 October 2026
+
+### Experiment: where the desktop's view lives
+
+Run for real, read only, 13 October 2026, this machine (Windows 11 Home
+26200, wallpaper not a slideshow): `FindWindowW("Progman")` and
+`GetShellWindow` return the same window; `SHELLDLL_DefView` is its child;
+Progman has no WorkerW child; none of the 16 top level WorkerW windows holds a
+`SHELLDLL_DefView`. The Progman route is therefore the one exercised here. The
+WorkerW route, which the specification attributes to slideshow wallpaper, is
+built but was not observed: testing it needs the author's wallpaper setting
+changed, which is the author's to do at the gate.
+
+### Experiment and evidence: Task Manager's Startup state
+
+Read only, 13 October 2026, `HKCU\...\Run` and
+`HKCU\...\Explorer\StartupApproved\Run` on this machine. StartupApproved is
+not documented by Microsoft; this record is the evidence for how Thyme reads
+it.
+
+| App | Run value | StartupApproved entry | Task Manager status, as the author read it |
+|---|---|---|---|
+| Docker Desktop | present | 12 bytes, first 0x01, bytes 4 to 11 zero | Disabled |
+| Teams | absent | 12 bytes, first 0x01, bytes 4 to 11 non zero | Disabled |
+| Discord, JetBrains Toolbox, Signal | present | absent | not asked; treated as enabled |
+
+Conclusion accepted: no entry means enabled; a first byte of 0x01 means
+disabled. Thyme reads an odd first byte as disabled. What Task Manager writes
+when an app is enabled again was not observed; the WE6 gate's untick and
+re-tick in Task Manager covers it.
+
+Author's decision, 13 October 2026: ticking Start with Windows writes the Run
+value and deletes Thyme's own StartupApproved value if present; unticking
+deletes the Run value only. Thyme never touches another app's entry.
+
+### Read from the SDK headers
+
+`NOTIFYICONDATAW` (shellapi.h, every field under the NTDDI guards Windows 10
+satisfies) is 976 bytes on 64 bit Windows and `ICONINFO` (WinUser.h) is 32;
+both asserted by the extended struct size test. `Shell_NotifyIconW`,
+`CreateBitmap`, `CreateIconIndirect`, `SetWindowLongPtrW`,
+`GetSystemMetricsForDpi`, `RegisterWindowMessageW`, `SetWindowTextW`,
+`AppendMenuW`, `FindWindowW` and `FindWindowExW` signatures were read there,
+and `NIN_SELECT`, `NINF_KEY`, `WM_CONTEXTMENU`, `MF_*`, `TPM_*` and
+`GWLP_HWNDPARENT` values. `golang.org/x/sys/windows/registry` v0.49.0 provides
+`OpenKey`, `CreateKey`, `GetStringValue`, `SetStringValue`, `GetBinaryValue`,
+`DeleteValue` and `ErrNotExist` (read from source).
+
+## WE6 Execute, 13 October 2026
+
+### Findings
+
+- Smoke run by the agent on this machine: the start line reported
+  `"desktopViewFound":true`, `"trayRequested":true` and `"trayShown":true`;
+  the Run value was absent before and after, as nothing was chosen from the
+  menu. The agent cannot click, so the menu, the tray menu, Win+D, Explorer
+  restart, always on top, Start with Windows and Narrator were not observed.
+- Ending Thyme from Task Manager, as the WE5 gate did, cannot remove the tray
+  icon, so a dead icon stays until the pointer passes over it. Exit from the
+  menu removes it; a normal message loop exit removes it unconditionally.
+- The Scale submenu is present and its current step ticked, but greyed until
+  WE7 makes the steps act, so the WE6 menu order test need not change in WE7.
+- The tray icon is the panel as a rounded square with its outline and two
+  clock hands at twelve and three; at 16 pixels it reads as a clock face, but
+  could be read as a letter L. Golden images at 16, 20, 24 and 32 pixels.
+- The DefView search had two defects found in review before any run: it would
+  have searched top level windows for the view when Progman was missing, and
+  it reset the WorkerW result inside the enumeration callback. Both fixed.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64, 144 DPI. Toolchain go1.27.2.
+staticcheck 2026.2.2 (0.8.2). Commands are those of the WE1 report, plus:
+
+```bash
+go test -count=1 -v ./internal/desktop/ ./internal/clockmodel/ ./internal/render/
+```
+
+| Item | Result |
+|---|---|
+| Focused tests: startup, menu model, spoken time, tray icon, struct sizes | pass; each seen failing against stubs or undefined types first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean |
+| Cross builds | succeed |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Tests skipped | none |
+| Author gate | WE6: outstanding |

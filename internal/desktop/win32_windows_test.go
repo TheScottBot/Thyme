@@ -24,6 +24,8 @@ func TestWin32Structs_MatchTheSdkSizes(t *testing.T) {
 		{name: "POINT", actualSize: unsafe.Sizeof(win32Point{}), expectedSize: 8},
 		{name: "SIZE", actualSize: unsafe.Sizeof(win32Size{}), expectedSize: 8},
 		{name: "RECT", actualSize: unsafe.Sizeof(win32Rect{}), expectedSize: 16},
+		{name: "NOTIFYICONDATAW", actualSize: unsafe.Sizeof(win32NotifyIconData{}), expectedSize: 976},
+		{name: "ICONINFO", actualSize: unsafe.Sizeof(win32IconInfo{}), expectedSize: 32},
 	}
 	for _, testCase := range testCases {
 		if testCase.actualSize != testCase.expectedSize {

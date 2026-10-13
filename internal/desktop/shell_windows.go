@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"math/bits"
+	"os"
 	"path/filepath"
 	"runtime"
 	"sync/atomic"
@@ -47,6 +48,15 @@ type shell struct {
 	// decision after WE5; see README.md, known limitations).
 	startupTimeZone      windows.Timezoneinformation
 	timeZoneChangeLogged bool
+
+	// Desktop citizenship (WE6).
+	exePath               string
+	taskbarCreatedMessage uint32
+	defView               uintptr
+	defViewMissingLogged  bool
+	trayIcon              uintptr
+	trayShown             bool
+	lastWindowText        string
 
 	updateLayeredWindowFailures int
 	settingsSaveFailures        int
@@ -152,10 +162,23 @@ func (shell *shell) start() error {
 	shell.window = window
 	shell.dpi = dpiForWindow(window)
 
+	exePath, exePathError := os.Executable()
+	if exePathError != nil {
+		return fmt.Errorf("finding the exe: %w", exePathError)
+	}
+	shell.exePath = exePath
+	shell.taskbarCreatedMessage = registerWindowMessage("TaskbarCreated")
+
 	startPosition := win32Point{X: shell.current.Position.X, Y: shell.current.Position.Y}
 	shell.redraw(&startPosition)
 	shell.clampOntoAMonitor()
+	shell.pinToDesktop()
 	showWithoutActivating(window)
+	shell.applyZOrder()
+	if shell.current.ShowInTray {
+		shell.addTrayIcon()
+	}
+	shell.updateWindowText(time.Now())
 
 	shell.logger.Info("started",
 		"version", product.Version,
@@ -165,8 +188,9 @@ func (shell *shell) start() error {
 		"settingsSource", string(report.Source),
 		"settingsRejected", len(report.Rejections),
 		"zonesShown", len(shell.zones),
-		"desktopOwnership", "not built until WE6",
-		"tray", "not built until WE6",
+		"desktopViewFound", shell.defView != 0,
+		"trayRequested", shell.current.ShowInTray,
+		"trayShown", shell.trayShown,
 	)
 
 	shell.tickTimer = time.AfterFunc(clockmodel.NextWake(time.Now(), shell.current.ShowSeconds), shell.postTick)
@@ -191,6 +215,11 @@ func (shell *shell) loadZones() {
 func (shell *shell) stop() {
 	if shell.tickTimer != nil {
 		shell.tickTimer.Stop()
+	}
+	shell.removeTrayIcon()
+	if shell.trayIcon != 0 {
+		destroyIcon(shell.trayIcon)
+		shell.trayIcon = 0
 	}
 	if shell.bitmap != nil {
 		shell.bitmap.release()
@@ -298,8 +327,7 @@ func (shell *shell) clampOntoAMonitor() {
 	}
 }
 
-// rememberPosition saves where the user left the widget, once per move. A
-// file Thyme could not understand is never saved over (WE3).
+// rememberPosition saves where the user left the widget, once per move.
 func (shell *shell) rememberPosition() {
 	windowBounds, rectangleError := windowRectangle(shell.window)
 	if rectangleError != nil {
@@ -307,13 +335,20 @@ func (shell *shell) rememberPosition() {
 		return
 	}
 	shell.current.Position = settings.Position{X: windowBounds.Left, Y: windowBounds.Top}
+	shell.saveSettings("drag")
+}
+
+// saveSettings writes the settings file, a change outside the process, so it
+// logs which surface asked (datum 0.14). A file Thyme could not understand is
+// never saved over (WE3).
+func (shell *shell) saveSettings(origin ActionOrigin) {
 	if !shell.overwriteAllowed {
-		shell.logger.Info("settings not saved: the file on disk was not understood and is kept")
+		shell.logger.Info("settings not saved: the file on disk was not understood and is kept", "origin", string(origin))
 		return
 	}
 	if saveError := settings.Save(shell.settingsPath, shell.current); saveError != nil {
 		shell.settingsSaveFailures++
-		shell.logger.Warn("settings not saved", "reason", eventlog.ReasonWithoutPath(saveError), "count", shell.settingsSaveFailures)
+		shell.logger.Warn("settings not saved", "origin", string(origin), "reason", eventlog.ReasonWithoutPath(saveError), "count", shell.settingsSaveFailures)
 	}
 }
 
@@ -325,10 +360,35 @@ var windowProcedureCallback = windows.NewCallback(func(window uintptr, message u
 })
 
 func (shell *shell) handleMessage(message uint32, wParam uintptr, lParam uintptr) uintptr {
+	// TaskbarCreated is registered at run time, so it cannot be a case label.
+	if message == shell.taskbarCreatedMessage && message != 0 {
+		shell.handleTaskbarCreated()
+		return 0
+	}
 	switch message {
 	case tickMessage:
+		now := time.Now()
 		shell.redraw(nil)
 		shell.aimTimer()
+		shell.ensurePinned()
+		shell.updateWindowText(now)
+		return 0
+
+	case wmContextMenu:
+		// A right click on the widget. The point is in screen coordinates;
+		// minus one in both means the keyboard asked, and the menu opens at
+		// the panel's corner instead.
+		x, y := signedLowWord(lParam), signedHighWord(lParam)
+		if x == -1 && y == -1 {
+			if windowBounds, rectangleError := windowRectangle(shell.window); rectangleError == nil {
+				x, y = windowBounds.Left+shell.panelBounds.Left, windowBounds.Top+shell.panelBounds.Top
+			}
+		}
+		shell.showMenu(OriginWidgetMenu, x, y)
+		return 0
+
+	case trayCallbackMessage:
+		shell.handleTrayEvent(wParam, lParam)
 		return 0
 
 	case wmNcHitTest:

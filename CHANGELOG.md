@@ -37,5 +37,12 @@ tag, and which author gates were cleared at which commit.
   re aimed from the wall clock after every tick. Single instance by mutex. A
   capped JSON lines log beside the settings. Requires Windows 10 version 1703
   or later.
+- **WE6 desktop citizenship.** Owned by the desktop's view so Show Desktop
+  spares it, re pinned after Explorer restarts. A right click and tray menu:
+  Seconds, Scale (greyed until WE7), Always on top, Start with Windows (read
+  fresh from the registry, Task Manager's disable included), Show in tray,
+  Exit. A tray icon drawn at run time from the theme, on by default and
+  keyboard reachable. The window's text is the spoken time for screen readers.
+  Every change outside the process logs which menu asked for it.
 
 No contract digest applies: Thyme implements no shared contract.

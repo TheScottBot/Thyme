@@ -372,3 +372,239 @@ func utf16OrPanic(value string) *uint16 {
 	}
 	return pointer
 }
+
+// WE6 bindings: the tray icon, the menu, desktop ownership and the window's
+// text. Read from WinUser.h, wingdi.h and shellapi.h of SDK 10.0.26100.0.
+
+var (
+	shell32 = windows.NewLazySystemDLL("shell32.dll")
+
+	procAppendMenuW            = user32.NewProc("AppendMenuW")
+	procCreateIconIndirect     = user32.NewProc("CreateIconIndirect")
+	procCreatePopupMenu        = user32.NewProc("CreatePopupMenu")
+	procDestroyIcon            = user32.NewProc("DestroyIcon")
+	procDestroyMenu            = user32.NewProc("DestroyMenu")
+	procDestroyWindow          = user32.NewProc("DestroyWindow")
+	procFindWindowExW          = user32.NewProc("FindWindowExW")
+	procFindWindowW            = user32.NewProc("FindWindowW")
+	procGetDpiForSystem        = user32.NewProc("GetDpiForSystem")
+	procGetSystemMetricsForDpi = user32.NewProc("GetSystemMetricsForDpi")
+	procRegisterWindowMessageW = user32.NewProc("RegisterWindowMessageW")
+	procSetForegroundWindow    = user32.NewProc("SetForegroundWindow")
+	procSetWindowLongPtrW      = user32.NewProc("SetWindowLongPtrW")
+	procSetWindowTextW         = user32.NewProc("SetWindowTextW")
+	procTrackPopupMenu         = user32.NewProc("TrackPopupMenu")
+
+	procCreateBitmap = gdi32.NewProc("CreateBitmap")
+
+	procShellNotifyIconW = shell32.NewProc("Shell_NotifyIconW")
+)
+
+const (
+	wmNull        = 0x0000
+	wmContextMenu = 0x007B
+
+	ninSelect    = wmUser + 0
+	ninfKey      = 0x1
+	ninKeySelect = ninSelect | ninfKey
+	wmUser       = 0x0400
+
+	nimAdd        = 0x00000000
+	nimDelete     = 0x00000002
+	nimSetVersion = 0x00000004
+
+	nifMessage = 0x00000001
+	nifIcon    = 0x00000002
+	nifTip     = 0x00000004
+	nifShowTip = 0x00000080
+
+	notifyIconVersion4 = 4
+
+	mfString    = 0x00000000
+	mfGrayed    = 0x00000001
+	mfChecked   = 0x00000008
+	mfPopup     = 0x00000010
+	mfSeparator = 0x00000800
+
+	tpmRightButton = 0x0002
+	tpmNoNotify    = 0x0080
+	tpmReturnCmd   = 0x0100
+
+	swpNoMove = 0x0002
+
+	smCxSmallIcon = 49
+
+	// gwlpHwndParent is (-8). On a top level window it sets the owner, which
+	// is how the widget is owned by the desktop's view.
+	gwlpHwndParent = ^uintptr(7)
+
+	// hwndTopmost is ((HWND)-1); hwndBottom is ((HWND)1).
+	hwndTopmost = ^uintptr(0)
+	hwndBottom  = uintptr(1)
+)
+
+type win32NotifyIconData struct {
+	Size             uint32
+	Window           uintptr
+	Identifier       uint32
+	Flags            uint32
+	CallbackMessage  uint32
+	Icon             uintptr
+	Tip              [128]uint16
+	State            uint32
+	StateMask        uint32
+	Info             [256]uint16
+	TimeoutOrVersion uint32
+	InfoTitle        [64]uint16
+	InfoFlags        uint32
+	Item             windows.GUID
+	BalloonIcon      uintptr
+}
+
+type win32IconInfo struct {
+	IsIcon   int32
+	HotspotX uint32
+	HotspotY uint32
+	Mask     uintptr
+	Colour   uintptr
+}
+
+func destroyWindow(window uintptr) {
+	procDestroyWindow.Call(window)
+}
+
+func registerWindowMessage(name string) uint32 {
+	// RegisterWindowMessageW reads the string during the call.
+	message, _, _ := procRegisterWindowMessageW.Call(uintptr(unsafe.Pointer(utf16OrPanic(name))))
+	return uint32(message)
+}
+
+func setWindowText(window uintptr, text string) error {
+	textPointer, conversionError := syscall.UTF16PtrFromString(text)
+	if conversionError != nil {
+		return conversionError
+	}
+	// SetWindowTextW copies the string during the call.
+	if succeeded, _, callError := procSetWindowTextW.Call(window, uintptr(unsafe.Pointer(textPointer))); succeeded == 0 {
+		return callError
+	}
+	return nil
+}
+
+func findWindowByClass(parent uintptr, className string) uintptr {
+	// FindWindowW and FindWindowExW read the class name during the call.
+	classPointer := uintptr(unsafe.Pointer(utf16OrPanic(className)))
+	if parent == 0 {
+		window, _, _ := procFindWindowW.Call(classPointer, 0)
+		return window
+	}
+	window, _, _ := procFindWindowExW.Call(parent, 0, classPointer, 0)
+	return window
+}
+
+func setOwner(window uintptr, owner uintptr) {
+	procSetWindowLongPtrW.Call(window, gwlpHwndParent, owner)
+}
+
+func setZOrder(window uintptr, insertAfter uintptr) error {
+	if succeeded, _, callError := procSetWindowPos.Call(window, insertAfter, 0, 0, 0, 0, swpNoMove|swpNoSize|swpNoActivate); succeeded == 0 {
+		return callError
+	}
+	return nil
+}
+
+func setForegroundWindow(window uintptr) {
+	procSetForegroundWindow.Call(window)
+}
+
+func smallIconSize() int {
+	systemDpi, _, _ := procGetDpiForSystem.Call()
+	size, _, _ := procGetSystemMetricsForDpi.Call(smCxSmallIcon, systemDpi)
+	return int(size)
+}
+
+// createIcon builds an icon from premultiplied BGRA pixels: a 32 bit top down
+// colour bitmap whose alpha is the shape, and an all zero mask, which an
+// alpha icon still requires.
+func createIcon(pixels []byte, width int, height int) (uintptr, error) {
+	bitmapInformation := win32BitmapInfo{Header: win32BitmapInfoHeader{
+		Width: int32(width), Height: -int32(height), Planes: 1, BitCount: 32, Compression: biRgb,
+	}}
+	bitmapInformation.Header.Size = uint32(unsafe.Sizeof(bitmapInformation.Header))
+	var bitsAddress uintptr
+	// As in newLayeredBitmap: the BITMAPINFO is read during the call and the
+	// pixel memory's address is written to bitsAddress.
+	colourBitmap, _, callError := procCreateDIBSection.Call(0, uintptr(unsafe.Pointer(&bitmapInformation)), dibRgbColors, uintptr(unsafe.Pointer(&bitsAddress)), 0, 0)
+	if colourBitmap == 0 || bitsAddress == 0 {
+		return 0, callError
+	}
+	defer procDeleteObject.Call(colourBitmap)
+	// The DIB section owns width times height times four bytes at bitsAddress
+	// until the deferred DeleteObject above.
+	copy(unsafe.Slice((*byte)(unsafe.Add(unsafe.Pointer(nil), bitsAddress)), width*height*4), pixels)
+
+	// Monochrome rows are padded to 16 bits.
+	maskBits := make([]byte, (width+15)/16*2*height)
+	// CreateBitmap copies the mask bits during the call.
+	maskBitmap, _, callError := procCreateBitmap.Call(uintptr(width), uintptr(height), 1, 1, uintptr(unsafe.Pointer(&maskBits[0])))
+	if maskBitmap == 0 {
+		return 0, callError
+	}
+	defer procDeleteObject.Call(maskBitmap)
+
+	iconInformation := win32IconInfo{IsIcon: 1, Mask: maskBitmap, Colour: colourBitmap}
+	// CreateIconIndirect copies both bitmaps, so they are deleted after it.
+	icon, _, callError := procCreateIconIndirect.Call(uintptr(unsafe.Pointer(&iconInformation)))
+	if icon == 0 {
+		return 0, callError
+	}
+	return icon, nil
+}
+
+func destroyIcon(icon uintptr) {
+	procDestroyIcon.Call(icon)
+}
+
+func notifyIcon(operation uintptr, notifyData *win32NotifyIconData) error {
+	notifyData.Size = uint32(unsafe.Sizeof(*notifyData))
+	// Shell_NotifyIconW reads the NOTIFYICONDATAW during the call only.
+	if succeeded, _, callError := procShellNotifyIconW.Call(operation, uintptr(unsafe.Pointer(notifyData))); succeeded == 0 {
+		return callError
+	}
+	return nil
+}
+
+func createPopupMenu() uintptr {
+	menu, _, _ := procCreatePopupMenu.Call()
+	return menu
+}
+
+func appendMenuItem(menu uintptr, flags uintptr, identifierOrSubmenu uintptr, label string) error {
+	var labelAddress uintptr
+	if label != "" {
+		// AppendMenuW copies the label during the call.
+		labelAddress = uintptr(unsafe.Pointer(utf16OrPanic(label)))
+	}
+	if succeeded, _, callError := procAppendMenuW.Call(menu, flags, identifierOrSubmenu, labelAddress); succeeded == 0 {
+		return callError
+	}
+	return nil
+}
+
+// trackPopupMenu shows the menu and returns the chosen command, or zero when
+// it is dismissed. It runs a modal loop; posted ticks are still dispatched
+// inside it (WE5 experiment), so the clock keeps moving.
+func trackPopupMenu(menu uintptr, window uintptr, x int32, y int32) int {
+	command, _, _ := procTrackPopupMenu.Call(menu, tpmReturnCmd|tpmRightButton|tpmNoNotify, uintptr(x), uintptr(y), 0, window, 0)
+	return int(command)
+}
+
+func destroyMenu(menu uintptr) {
+	procDestroyMenu.Call(menu)
+}
+
+// signedLowWord and signedHighWord split a packed pair of screen coordinates,
+// which are signed because a monitor left of or above the primary one has
+// negative coordinates.
+func signedLowWord(packed uintptr) int32  { return int32(int16(uint16(packed))) }
+func signedHighWord(packed uintptr) int32 { return int32(int16(uint16(packed >> 16))) }

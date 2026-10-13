@@ -51,7 +51,9 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `third_party/jetbrainsmono` | the vendored files and the embedded font match SHA256SUMS |
 | `internal/placement` | each edge, a corner, larger than the work area (top left wins), the visible panel clamped rather than the transparent margin, the largest overlap or else the nearest monitor, a vanished monitor, pixel scale for every step at 96, 120, 144 and 192 DPI |
 | `internal/eventlog` | the cap, one previous file kept, appending to and rotating an earlier run's log, an oversized record kept whole, paths stripped from logged errors |
-| `internal/desktop` | Win32 struct sizes against the SDK (Windows runners only); the rest is the WE5 author gate |
+| `internal/desktop` | Win32 struct sizes against the SDK (Windows runners only); the menu model's items, order, ticks and greyed states; Start with Windows against a fake registry: the quoted Run value, Task Manager's disable, enabling clearing it, idempotence, partial failures and the required origin; the window and tray behaviour is the WE5 and WE6 author gates |
+| `internal/clockmodel`, spoken time | the window's text for screen readers, in the local zone |
+| `internal/render`, tray icon | golden images at 16, 20, 24 and 32 pixels; opaque middle, clear corners; size bounds |
 
 ## Golden images
 
@@ -85,7 +87,9 @@ a 412,824 byte frame at 100 percent.
 
 - WE4: the 100 percent golden image (`internal/render/testdata/golden/mockup_100.png`), viewed beside `docs/theme.png`, is accepted as the theme. Cleared by the author, 13 October 2026, in their words: "theme accepted". Recorded from the conversation; nothing else was written down. The dotted zero, the slightly wider time, the slightly higher date and the missing inner glow were shown to the author before acceptance.
 - WE5, on Windows 11 arm64 and on one amd64 machine, with the exe built as in
-  README.md. Outstanding. Until WE6 adds Exit, end Thyme from Task Manager.
+  README.md. Cleared by the author, 13 October 2026, in their words: "WE5 gate
+  passed". Recorded from the conversation; which machines were used and what
+  was observed for each item was not written down.
   1. The widget appears with a transparent surround: only the panel and its
      glow are visible.
   2. It drags from anywhere on the panel, including across monitors.
@@ -97,3 +101,20 @@ a 412,824 byte frame at 100 percent.
   7. Idle processor use in Task Manager is zero with seconds off (set
      `"showSeconds": false` in the settings file and restart) and negligible
      with them on.
+- WE6. Outstanding.
+  1. Win+D leaves the widget visible.
+  2. Restart Explorer from Task Manager (Details, explorer.exe, End task, then
+     File, Run new task, explorer): the widget stays visible, the tray icon
+     comes back, and Win+D still spares the widget afterwards.
+  3. Always on top on keeps the widget above other windows; off sends it to
+     the bottom and never raises it above the app that launched it.
+  4. Start with Windows ticked survives a sign out and in. Unticking Thyme in
+     Task Manager's Startup apps is shown unticked in the menu; ticking it in
+     the menu again shows it Enabled in Task Manager.
+  5. The tray menu works from the keyboard alone: Win+B, arrows to the Thyme
+     icon, Enter (or Shift+F10) opens the menu, arrows and Enter choose.
+  6. Exit removes the tray icon and the widget.
+  7. Narrator, navigated to the widget, reads its text: "Thyme:" and the time
+     and date. If it does not, the gap is recorded as a known limitation.
+  8. Optional, if the author uses a wallpaper slideshow: Win+D still spares
+     the widget with the slideshow on.

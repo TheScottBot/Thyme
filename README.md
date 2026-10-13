@@ -4,9 +4,21 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE5. The widget runs and can be dragged. The menu, tray icon, Start
-with Windows and Show Desktop handling arrive in WE6; until then, end it from
-Task Manager. Requires Windows 10 version 1703 or later.
+Status: WE6. The widget runs, drags, survives Show Desktop, and has a menu and
+a tray icon. Scale steps arrive in WE7. Requires Windows 10 version 1703 or
+later.
+
+## Using it
+
+Right click the widget, or click the tray icon, for the menu: Seconds, Scale,
+Always on top, Start with Windows, Show in tray, Exit. From the keyboard,
+Win+B reaches the tray; arrow to the Thyme icon and press Enter. Drag the
+widget anywhere; it remembers where you leave it.
+
+Start with Windows adds Thyme to your sign in programs for your account only.
+Its tick shows what will really happen: if you disable Thyme in Task
+Manager's Startup apps, the tick goes off, and ticking it again re-enables it
+there too.
 
 ## Building
 
@@ -92,6 +104,13 @@ label, when the zone is loaded.
   until Thyme restarts; the world clocks are unaffected, and the log records
   the change. Go reads the local zone once per process.
 - English only (WD7).
+- Task Manager's Startup state is kept in an undocumented registry value;
+  Thyme's reading of it rests on observation (see
+  docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md, WE6 Plan) and may need
+  revisiting if Windows changes it.
+- The menus are Windows' standard menus. Thyme does not use the undocumented
+  calls that make them dark (specification Part 1.2), so they may be light
+  while Windows is set to dark.
 
 ## Layout
 

@@ -29,6 +29,11 @@ tree and exits non zero on any hit.
 - Import boundary: no package outside `internal/desktop` and `cmd/thyme` may
   import `syscall`, `unsafe` or anything under `golang.org/x/sys`. Every Go
   file is parsed, test files and files behind build constraints included.
+- Network imports: no package at all, the shell and entry point included, may
+  import `net` or anything under it, `crypto/tls`, or anything under
+  `golang.org/x/net` (specification Part 6). This covers Thyme's own code;
+  `net` is still linked through golang.org/x/sys/windows, which never uses
+  it to open a socket (security pass record).
 - Prose scan: em dash, en dash, and runs of two or more hyphens, in every text
   file and in the comments and string literals of Go files. Exempt: Markdown
   table separator rows, command line flag tokens, and the explicit

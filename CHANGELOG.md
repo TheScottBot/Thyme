@@ -62,7 +62,8 @@ The author creates the tag; until then this heading says so.
 - **Security pass.** A DPI arriving in a window message is used only if the
   widget can be drawn at it, since any program running as the same user can
   send one; repeating render failures are logged on doubling, not every tick;
-  govulncheck runs in CI for both operating systems.
+  govulncheck runs in CI for both operating systems. A tree wide check fails
+  any network import in Thyme's own code.
 
 ### Contract digests
 

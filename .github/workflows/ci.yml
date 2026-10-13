@@ -77,9 +77,9 @@ jobs:
           GOOS=windows "$govulncheck_binary" ./...
           GOOS=linux "$govulncheck_binary" ./...
 
-      # The import boundary check and the prose and typography scan. Their
-      # tests in internal/repocheck prove them against planted violations on
-      # every run.
+      # The import boundary check, the network import check and the prose and
+      # typography scan. Their tests in internal/repocheck prove them against
+      # planted violations on every run.
       - name: repocheck
         run: go run ./tools/repocheck
 

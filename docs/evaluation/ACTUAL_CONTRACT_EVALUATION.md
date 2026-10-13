@@ -1219,3 +1219,21 @@ are robustness, not a crossed boundary.
 - Same user programs can open the menu, tick the clock, close the widget or
   take the single instance name first so Thyme exits quietly. Inherent to a
   desktop window at the same integrity level; accepted, not changed.
+
+(13 October 2026, the same evening: asked whether Thyme is fully offline. Run
+for real against the release build: after 20 seconds running, the process
+owned no TCP connection or listener and no UDP endpoint. It does load
+`ws2_32.dll`, which a Go program that only sleeps does not. go1.27.2
+`internal/poll/fd_windows.go` says `InitWSA`, which calls `WSAStartup`, "is
+called from the net package at init time"; `net` is linked only because
+golang.org/x/sys/windows imports it. So Winsock is initialised at start up and
+never used. Nothing enforces the offline rule beyond this record and review;
+a check on Thyme's own imports of `net` was offered to the author.)
+
+(13 October 2026, the same evening: at the author's request, `tools/repocheck`
+now also fails any import of `net` or beneath it, `crypto/tls`, or
+`golang.org/x/net` in any Thyme package, the shell and entry point included.
+Tests written first; then proven on the real tree with `net/http` planted in a
+Windows only file of `internal/desktop`, which the operating system boundary
+exempts but this rule does not: reported and exit 1; clean and exit 0 after
+removal.)

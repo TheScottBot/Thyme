@@ -53,6 +53,14 @@ func isShellPackageDirectory(packageDirectory string) bool {
 // a Windows only file in a pure package is exactly what the Linux build would
 // never notice. A file that does not parse is an error rather than a pass.
 func FindForbiddenImports(moduleRoot string) ([]ImportViolation, error) {
+	isExempt := func(relativePath string) bool { return isShellPackageDirectory(path.Dir(relativePath)) }
+	return findImports(moduleRoot, isExempt, isForbiddenImport)
+}
+
+// findImports is the walk both import rules share: every Go file the go tool
+// would build, test files and files behind build constraints included,
+// except those isExempt names, reporting each import isForbidden matches.
+func findImports(moduleRoot string, isExempt func(relativePath string) bool, isForbidden func(importPath string) bool) ([]ImportViolation, error) {
 	var violations []ImportViolation
 	fileSet := token.NewFileSet()
 
@@ -60,10 +68,7 @@ func FindForbiddenImports(moduleRoot string) ([]ImportViolation, error) {
 		return isDirectoryTheGoToolIgnores(directoryName)
 	}
 	visitFile := func(absolutePath string, relativePath string) error {
-		if !strings.HasSuffix(relativePath, ".go") {
-			return nil
-		}
-		if isShellPackageDirectory(path.Dir(relativePath)) {
+		if !strings.HasSuffix(relativePath, ".go") || isExempt(relativePath) {
 			return nil
 		}
 		parsedFile, parseError := parser.ParseFile(fileSet, absolutePath, nil, parser.ImportsOnly)
@@ -75,7 +80,7 @@ func FindForbiddenImports(moduleRoot string) ([]ImportViolation, error) {
 			if unquoteError != nil {
 				return fmt.Errorf("reading an import path in '%s': %w", relativePath, unquoteError)
 			}
-			if isForbiddenImport(importPath) {
+			if isForbidden(importPath) {
 				violations = append(violations, ImportViolation{FilePath: relativePath, ImportPath: importPath})
 			}
 		}

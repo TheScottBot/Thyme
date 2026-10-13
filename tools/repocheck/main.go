@@ -35,6 +35,16 @@ func checkRepository(repositoryRoot string) int {
 		failureCount++
 	}
 
+	networkViolations, networkError := repocheck.FindNetworkImports(repositoryRoot)
+	if networkError != nil {
+		fmt.Fprintf(os.Stderr, "network import check could not run: %v\n", networkError)
+		return 2
+	}
+	for _, violation := range networkViolations {
+		fmt.Printf("%s: network import '%s'; Thyme is offline by specification Part 6\n", violation.FilePath, violation.ImportPath)
+		failureCount++
+	}
+
 	proseViolations, proseError := repocheck.FindProseViolations(repositoryRoot, vendoredPaths)
 	if proseError != nil {
 		fmt.Fprintf(os.Stderr, "prose scan could not run: %v\n", proseError)

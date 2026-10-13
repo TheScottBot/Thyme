@@ -4,8 +4,8 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE3. The clock model and settings exist as tested packages; there is no
-window yet.
+Status: WE4. The clock model, settings and renderer exist as tested packages;
+there is no window yet.
 
 ## Building
 
@@ -84,6 +84,7 @@ label, when the zone is loaded.
 | `internal/desktop` | the Windows shell; the only package touching the OS |
 | `cmd/thyme` | the entry point, wiring only |
 | `internal/product` | the product name, once |
+| `third_party/jetbrainsmono` | the vendored font, its licence and digests, and the package that embeds it |
 | `internal/repocheck`, `tools/repocheck` | the import boundary check and the prose scan |
 
 ## Where it came from
@@ -97,3 +98,7 @@ icons or images is used. Thyme is not affiliated with DeskTick.
 ## Licence
 
 MIT, copyright TheScottBot. See LICENSE.
+
+The embedded typeface is JetBrains Mono, copyright 2020 The JetBrains Mono
+Project Authors, under the SIL Open Font Licence 1.1, whose text is in
+`third_party/jetbrainsmono/OFL.txt`. PROVENANCE.md records where it came from.

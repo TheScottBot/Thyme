@@ -573,3 +573,192 @@ written as one word.)
 Outstanding: the author's reproduction and the CI run of this change, and the
 author's decision on the two agent proposals in IMPLEMENTATION_DEVIATIONS.md
 (overwrite protection beyond version, and `internal/product`).
+
+## WE4 Plan, 13 October 2026
+
+(Earlier the same day: the author pushed 5715d22 and accepted both WE3
+proposals. CI run 38456599877 passed on all three runners, including the first
+30 s fuzz run of the settings parser on each.)
+
+### Decisions taken by the author
+
+| Id | Decision | Recorded |
+|---|---|---|
+| WD3 | Pure Go rendering: x/image opentype for text, x/image vector for shapes, a hand written box blur for the glow. | 13 October 2026 |
+| WD4 | JetBrains Mono Regular only, embedded. The author approved downloading it. | 13 October 2026 |
+| WU5 scale | The mock-up is a 200 percent render, so one design unit is two mock-up pixels. | 13 October 2026 |
+
+### The font, vendored
+
+Source: `https://github.com/JetBrains/JetBrainsMono`, latest release v2.304
+(published 2023-01-14), tag commit cd5227bd1f61dff3bbd6c814ceaf7ffd95e947d9,
+licence OFL-1.1 per the GitHub API, repository not archived. Downloaded 13
+October 2026 from `raw.githubusercontent.com` at that commit. Git blob hashes
+of both files equal the upstream blob hashes from the GitHub contents API.
+
+| File | Bytes | Git blob | SHA-256 |
+|---|---|---|---|
+| `fonts/ttf/JetBrainsMono-Regular.ttf` | 273,900 | dff66cc50702c75abd025dcf49f62a4dcc2d72de | a0bf60ef0f83c5ed4d7a75d45838548b1f6873372dfac88f71804491898d138f |
+| `OFL.txt` | 4,399 | 8bee4148c1d54dbf5dae6d6c117fc80414266abb | 30f0c136e3c88e422d0791acd97238870f9054a9729bc34cf2ff0d4ed8cac4ad |
+
+Read from the file with x/image v0.47.0: full name `JetBrains Mono Regular`,
+version `Version 2.304; ttfautohint (v1.8.4.7-5d5b)`, 1000 units per em, cap
+height 730, x height 550, ascent 1020, descent 300, advance of every glyph 600
+(monospaced), digit `2` ink from 76 to 527 horizontally and 740 high.
+
+### Dependency records (datum 0.13)
+
+golang.org/x/image v0.47.0:
+
+- Behaviour: OpenType parsing and glyph rasterisation (`font/opentype`,
+  `font/sfnt`), the `font.Drawer`, and an anti aliased vector rasteriser
+  (`vector`).
+- Why not the standard library: it has no font or path rasteriser.
+- Maintenance: part of the Go project, v0.47.0 published 2026-10-09.
+- Licence: BSD 3 clause, the Go licence.
+- Size: measured in WE8 against WU6.
+- Platforms: pure Go with optional amd64 assembly in `vector`; no cgo.
+- Security: parses the embedded font only, which is fixed at build time and
+  never user input.
+- Tests: golden images and the allocation bound in `internal/render`.
+- Replacement cost: confined to `internal/render`; another rasteriser would
+  need new golden images, nothing else.
+
+JetBrains Mono Regular v2.304:
+
+- Behaviour: the theme's only typeface.
+- Why: WD4. No system font is used, so the core renders identically on any
+  host.
+- Maintenance: last release January 2023, repository active (pushed January
+  2025); a font needs no updates to keep working.
+- Licence: SIL Open Font Licence 1.1, which permits embedding in software of
+  any licence when the licence text travels with it; OFL.txt is kept beside the
+  font and named in README.md.
+- Size: 273,900 bytes in the exe.
+- Security: parsed at start from the embedded bytes only.
+- Replacement cost: one file and the golden images.
+
+### Experiment: is rendering byte identical across architectures?
+
+Read from source first: x/image v0.47.0 `vector/raster_floating.go` disables
+fused multiply add explicitly so results agree across architectures, and
+`vector/acc_amd64.go` uses SSE4.1 assembly when present, pure Go elsewhere.
+
+Run for real, 13 October 2026: one program drew a rounded panel and the string
+`21:04:01 sun 2026-09-06` (unhinted and fully hinted) at scales 0.75, 1, 1.25,
+1.5 and 2, built for windows/arm64 (native) and windows/amd64 (run under the
+machine's x64 emulation), and the pixel bytes were compared.
+
+| Scale | Panel alone | Panel and text |
+|---|---|---|
+| 0.75 | identical | identical |
+| 1.00 | identical | 10 bytes differ, at most 2 of 255 |
+| 1.25 | identical | 3 bytes differ, at most 1 |
+| 1.50 | identical | 3 bytes differ, at most 2 |
+| 2.00 | identical | identical |
+
+Conclusion accepted: shapes are byte identical; glyph rasterisation is not,
+by at most 2 per channel in a handful of bytes. Golden images are therefore
+compared with a per channel tolerance of 2, recorded in TESTING.md as the
+specification allows. The amd64 side ran under emulation; the first CI run on
+real amd64 hardware either confirms the tolerance or records a correction.
+The root cause within glyph rasterisation was not pursued.
+
+### The mock-up, sampled
+
+`docs/theme.png`, 1448 by 1086, decoded as RGBA, sampled 13 October 2026 with a
+throwaway program. Mock-up pixels, then design units at the decided 200
+percent (one unit is two pixels).
+
+| Value | Mock-up measurement | Design value |
+|---|---|---|
+| Panel fill (WU1) | medians #12131c, #12151d, #13141e | #12131c |
+| Time digits (WU2) | brightest fifth of ink #fa95fa | #f894f8 |
+| Zone times (WU2) | #f692f6 | as the time |
+| Date line (WU2) | #e48be6 | #e48be6, a step dimmer than the time |
+| Zone labels (WU2) | #d583d7 | #d583d7 |
+| Outline (WU3) | bright core about 2 px, peaks #f7a0f3 to #feaefc | #f59ef3, 1 unit |
+| Outer glow (WU3) | red excess over the backdrop +35 at 2 px, +16 at 14, +5 at 30, 0 by about 40 | reaches about 20 units |
+| Divider | 2 px wide, #d599d7, x 851.5, from y 415 to 641 | 1 unit, #d599d7, inset 20 units top and bottom |
+| Backdrop (WU4) | #29384c at the top to #1e2b3d at the bottom | wallpaper, not drawn |
+| Panel outline box (WU5) | x 277 to 1171, y 375 to 680: 894 by 305 | 447 by 152.5 |
+| Corner radius (WU5) | 12 to 14 px from both top corners | 6.5 |
+| Time | digits 74 px high, ink 339 to 786 | JetBrains Mono at 49 units |
+| Date | digits 26 px high | 18 units |
+| Zone labels and times | digits 24 px high, rows every 53.3 px | 17 units, rows every 26.5 |
+| Left padding to the time and date | pen origin about 55 px | 27 units |
+| Right padding after the zone times | about 56 px | 27 units |
+| Time column to divider | about 50 px | 25 units |
+| Divider to labels | about 52 px | 26 units |
+| Label to zone time | about 109 px between pen origins | label advance plus 24 units |
+| Top and bottom padding to the zone block | 59 and 62 px | 30 units |
+
+Font sizes were derived from JetBrains Mono's measured metrics: the time's 74
+px digits at 0.74 em give an em near 100 px, and its ink width of 448 px over
+seven advances of 0.6 em gives about 98; 49 units is the compromise. The
+mock-up face is not certainly JetBrains Mono, so these sizes are fitted, not
+read. The panel width these give with seconds and four zones is 27 + 235.2 +
+25 + 1 + 26 + 30.6 + 24 + 51 + 27 = 446.8 units against the measured 447.
+
+Uncertainties: the mock-up is a compressed image, so colours carry a few levels
+of error, and the glow's falloff was fitted by eye to the red excess. The
+glow looks stronger below the panel than to its left, partly because the
+backdrop itself darkens downwards; a symmetric glow is drawn. Every value above
+is subject to the WE4 author gate, the 100 percent golden image beside the
+mock-up.
+
+## WE4 Execute, 13 October 2026
+
+### Findings
+
+- The steady state tick allocates nothing: 0 allocations and 0 bytes per
+  Render with a warmed cache, against a 412,824 byte frame at 100 percent. The
+  bound is set at 0 allocations.
+- The first layout read advances and cap heights from sized faces, which round
+  both to 1/64 pixel, so the panel width drifted by up to 0.125 pixels between
+  scale steps and three layout tests failed. Both are now read once in font
+  units and scaled exactly.
+- The divider is snapped to whole pixels so it stays one crisp line; the
+  positions after it use the unsnapped value, so the snapping cannot make the
+  layout disproportionate.
+- The render tests built for windows/amd64 and run under emulation pass against
+  golden images generated on arm64, so the tolerance of 2 holds across
+  architectures on this machine. The CI runners repeat this on real amd64.
+- For the author gate, compared side by side with the mock-up at 200 percent:
+  geometry, glow, palette and spacing agree closely. The visible differences
+  are that JetBrains Mono draws a dotted zero where the mock-up's zero is a
+  plain oval (the mock-up was not set in JetBrains Mono; x/image does not apply
+  OpenType stylistic alternates, so no undotted zero is reachable from code),
+  the time is a little wider than the mock-up's, the date sits a little higher,
+  and the mock-up has a faint inner glow that is not drawn.
+- The glow fringe catches clicks wherever its alpha is above zero, out to about
+  20 units from the panel, though the outer part is barely visible. Recorded by
+  `TestRender_GlowFringeIsClickableWhereverItIsDrawn`; whether to trim the
+  faint tail so it lets clicks through is a question for the WE5 gate, where
+  dragging can be felt.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64. Toolchain go1.27.2. staticcheck
+2026.2.2 (0.8.2). golang.org/x/image v0.47.0. Commands are those of the WE1
+report, plus:
+
+```bash
+go test -count=1 -v ./internal/render/ ./internal/theme/ ./third_party/...
+```
+
+```bash
+GOOS=windows GOARCH=amd64 go test -c -o render_amd64.test.exe ./internal/render
+```
+
+| Item | Result |
+|---|---|
+| Focused tests: render, theme, font | pass, 38 tests and subtests; each seen failing against stubs or missing golden images first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean, with the two vendored files excluded by exact path |
+| Render tests as amd64 under emulation | pass against the arm64 golden images |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Cross builds | succeed |
+| Tests skipped | none |
+| Author gate | WE4 theme acceptance: outstanding |

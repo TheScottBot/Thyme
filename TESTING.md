@@ -46,6 +46,33 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `internal/repocheck` | both tree wide checks against planted violations |
 | `internal/clockmodel` | the mock-up instant, daylight saving transitions in every mock-up zone, the date line, next wake at .000, .999 and .980 seconds in both modes, and zone load failures by reason |
 | `internal/settings` | every field round trips; the size bound refuses one byte over before parsing and accepts exactly the bound; every rejection reason, each costing only its field; whole file refusals and overwrite protection; rejections never carry file contents; atomic save, temporary file removed on failure; the fuzz target `FuzzParse` |
+| `internal/theme` | WCAG 2.x AA contrast of every text colour against the panel, computed from the constants; the normal text ratio at every scale; an opaque palette; the glow reach equals what the box passes spread |
+| `internal/render` | golden images (the mock-up at 100 and 200 percent; zero, one and four zones with seconds on and off); every pixel inside the panel opaque; every pixel beyond the glow transparent; the glow fringe clickable; BGRA conversion; layout widths; static layer caching; the steady state allocation bound |
+| `third_party/jetbrainsmono` | the vendored files and the embedded font match SHA256SUMS |
+
+## Golden images
+
+`internal/render/testdata/golden` holds one PNG per case. They are compared
+in premultiplied RGBA with a tolerance of 2 per channel: measured in WE4, glyph
+rasterisation differs between arm64 and amd64 by at most 2 of 255 in a handful
+of bytes, while shapes are byte identical. A failing comparison writes the
+rendered image to the test's temporary folder and names it.
+
+To rewrite them after an intended visual change:
+
+```bash
+go test ./internal/render -run Golden -update
+```
+
+A rewritten golden image is accepted only by the author looking at it.
+
+## Allocation bound
+
+`TestRender_SteadyStateTickAllocatesNoFrameSizedBuffer` renders alternating
+times into a warmed renderer. Bound: `MaximumAllocationsPerTick` = 0
+allocations per tick, and under one sixty fourth of a frame in bytes. Measured
+13 October 2026 on windows/arm64: 0 allocations and 0 bytes per tick against
+a 412,824 byte frame at 100 percent.
 
 ## Testing deviations
 
@@ -53,4 +80,4 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 
 ## Author gates
 
-None in WE1, WE2 or WE3.
+- WE4: the 100 percent golden image (`internal/render/testdata/golden/mockup_100.png`), viewed beside `docs/theme.png`, is accepted as the theme. Outstanding.

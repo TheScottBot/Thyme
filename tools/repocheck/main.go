@@ -12,8 +12,11 @@ import (
 
 // vendoredPaths is the explicit list of third party files kept verbatim under
 // datum 0.13 and therefore exempt from the prose scan. Each entry is an exact
-// file or directory, never a pattern. It is empty until something is vendored.
-var vendoredPaths = []string{}
+// file or directory, never a pattern. Each is listed in PROVENANCE.md.
+var vendoredPaths = []string{
+	"third_party/jetbrainsmono/JetBrainsMono-Regular.ttf",
+	"third_party/jetbrainsmono/OFL.txt",
+}
 
 func main() {
 	os.Exit(checkRepository("."))

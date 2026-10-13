@@ -45,8 +45,8 @@ covering test.
 - Why: each of these is a file Thyme did not understand, most likely a broken
   hand edit, and saving defaults over it would destroy the user's work with
   nothing to say so. A missing file is still written normally.
-- Author's decision: proposed by the agent on 13 October 2026, awaiting the
-  author. Reverting it is one line in `refusedWhole`.
+- Author's decision: proposed by the agent and accepted by the author, 13
+  October 2026.
 - Covering tests: `TestParse_VersionProblemsYieldDefaultsAndForbidOverwriting`
   and `TestLoad_EveryWholeFileRefusalForbidsOverwriting`.
 
@@ -77,7 +77,7 @@ covering test.
   built from it. Both `internal/settings` (the settings folder) and the shell
   (exe, Run value, mutex, tooltip) need it, and the pure packages may not
   import the shell, so neither existing home works.
-- Author's decision: proposed by the agent on 13 October 2026, awaiting the
-  author.
+- Author's decision: proposed by the agent and accepted by the author, 13
+  October 2026.
 - Covering test: `TestRelativeFilePath_IsDerivedFromTheProductName`; the
   import boundary check covers the new package like every other.

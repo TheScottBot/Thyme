@@ -26,5 +26,10 @@ tag, and which author gates were cleared at which commit.
   saved over. Saves are written to a temporary file and renamed over. A fuzz
   target runs in CI.
 - **`internal/product`** holds the name Thyme once.
+- **WE4 rendering.** `internal/theme` holds every visual constant, measured from
+  the mock-up at 200 percent, with a WCAG AA contrast test. `internal/render`
+  draws the glow, panel, outline, divider and text into premultiplied BGRA with
+  a cached static layer and no allocation per tick. JetBrains Mono Regular
+  v2.304 is vendored and embedded (PROVENANCE.md).
 
 No contract digest applies: Thyme implements no shared contract.

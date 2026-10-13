@@ -8,6 +8,7 @@ package product
 // release strands every existing user's settings: datum 0.11 applies.
 const Name = "Thyme"
 
-// Version is stamped into the start up log and, from WE8, the release. It is
-// provisional until the author tags a release.
-const Version = "0.1.0-dev"
+// Version is the release version, decided by the author in WE8, and the one
+// place it is written: the start up log reports it, and the release tag and
+// CHANGELOG.md name the same number.
+const Version = "1.0.0"

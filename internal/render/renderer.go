@@ -83,6 +83,9 @@ type Renderer struct {
 	outputPixels          []byte
 	staticLayerBuildCount int
 
+	// shapeRasterizer is reused for every shape of every static layer build.
+	shapeRasterizer *vector.Rasterizer
+
 	timeColour     *image.Uniform
 	dateColour     *image.Uniform
 	zoneTimeColour *image.Uniform
@@ -242,11 +245,14 @@ func (renderer *Renderer) rebuildStaticLayer(text Text, pixelScale float64, key 
 		clear(renderer.staticLayer.Pix)
 	}
 
-	drawGlow(renderer.staticLayer, layout)
-	fillRoundedRectangle(renderer.staticLayer, layout.panel, layout.panelCornerRadius, 0, theme.PanelFill)
-	drawOutline(renderer.staticLayer, layout)
+	if renderer.shapeRasterizer == nil {
+		renderer.shapeRasterizer = vector.NewRasterizer(layout.canvasWidth, layout.canvasHeight)
+	}
+	drawGlow(renderer.shapeRasterizer, renderer.staticLayer, layout)
+	fillRoundedRectangle(renderer.shapeRasterizer, renderer.staticLayer, layout.panel, layout.panelCornerRadius, 0, theme.PanelFill)
+	drawOutline(renderer.shapeRasterizer, renderer.staticLayer, layout)
 	if layout.hasDivider {
-		fillRoundedRectangle(renderer.staticLayer, layout.divider, 0, 0, theme.Divider)
+		fillRoundedRectangle(renderer.shapeRasterizer, renderer.staticLayer, layout.divider, 0, 0, theme.Divider)
 	}
 	labelColour := image.NewUniform(theme.ZoneLabelText)
 	for zoneIndex, zone := range text.Zones {
@@ -306,17 +312,21 @@ func addRoundedRectanglePath(rasterizer *vector.Rasterizer, rectangle floatRect,
 	rasterizer.ClosePath()
 }
 
-func fillRoundedRectangle(destination *image.RGBA, rectangle floatRect, radius float64, outset float64, colour color.RGBA) {
+// Each shape resets one shared rasterizer rather than making its own: a
+// rasterizer holds a frame sized accumulator, and a fresh one per shape left
+// several frames' worth of memory with the process after every rebuild
+// (measured in WE8).
+func fillRoundedRectangle(rasterizer *vector.Rasterizer, destination *image.RGBA, rectangle floatRect, radius float64, outset float64, colour color.RGBA) {
 	bounds := destination.Bounds()
-	rasterizer := vector.NewRasterizer(bounds.Dx(), bounds.Dy())
+	rasterizer.Reset(bounds.Dx(), bounds.Dy())
 	addRoundedRectanglePath(rasterizer, rectangle, radius, outset, false)
 	rasterizer.Draw(destination, bounds, image.NewUniform(colour), image.Point{})
 }
 
-func drawOutline(destination *image.RGBA, layout frameLayout) {
+func drawOutline(rasterizer *vector.Rasterizer, destination *image.RGBA, layout frameLayout) {
 	bounds := destination.Bounds()
 	halfWidth := theme.OutlineWidth * layout.pixelScale / 2
-	rasterizer := vector.NewRasterizer(bounds.Dx(), bounds.Dy())
+	rasterizer.Reset(bounds.Dx(), bounds.Dy())
 	addRoundedRectanglePath(rasterizer, layout.panel, layout.panelCornerRadius, halfWidth, false)
 	addRoundedRectanglePath(rasterizer, layout.panel, layout.panelCornerRadius, -halfWidth, true)
 	rasterizer.Draw(destination, bounds, image.NewUniform(theme.Outline), image.Point{})
@@ -325,11 +335,11 @@ func drawOutline(destination *image.RGBA, layout frameLayout) {
 // drawGlow blurs the panel's own shape and paints it in the glow colour
 // beneath the panel. The radius is rounded down so the blur never spreads
 // further than theme.GlowReach, which the transparency test relies on.
-func drawGlow(destination *image.RGBA, layout frameLayout) {
+func drawGlow(rasterizer *vector.Rasterizer, destination *image.RGBA, layout frameLayout) {
 	bounds := destination.Bounds()
 	width, height := bounds.Dx(), bounds.Dy()
 	shapeMask := image.NewAlpha(bounds)
-	rasterizer := vector.NewRasterizer(width, height)
+	rasterizer.Reset(width, height)
 	addRoundedRectanglePath(rasterizer, layout.panel, layout.panelCornerRadius, 0, false)
 	rasterizer.Draw(shapeMask, bounds, image.Opaque, image.Point{})
 

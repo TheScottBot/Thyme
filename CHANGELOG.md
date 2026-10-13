@@ -6,6 +6,13 @@ tag, and which author gates were cleared at which commit.
 
 ## [Unreleased]
 
+Nothing yet.
+
+## [1.0.0], not yet tagged
+
+The first release: every phase of specification version 1, WE1 to WE8.
+The author creates the tag; until then this heading says so.
+
 ### Added
 
 - **WE1 skeleton.** Module `github.com/TheScottBot/Thyme` on Go 1.27.2, the
@@ -47,5 +54,31 @@ tag, and which author gates were cleared at which commit.
 - **WE7 scale.** The Scale submenu's steps (75, 100, 125, 150 and 200 percent)
   act: the current one is ticked, and a change redraws at the new size from
   the top left corner, clamps onto the screen and is saved.
+- **WE8 release.** Release builds for windows/amd64 and windows/arm64 with
+  `CGO_ENABLED=0`, trimmed paths and stripped symbols, and a CI check that
+  fails either exe over 6 MiB. Static layer rebuilds share one rasterizer and
+  hand their scratch memory back, which cut idle memory by about 4 MB.
+  Version 1.0.0.
 
-No contract digest applies: Thyme implements no shared contract.
+### Contract digests
+
+None: Thyme implements no shared contract.
+
+### Shared code
+
+This is the first tag, so every file is new. No code is shared with another
+product (specification: module B not applied).
+
+### Author gates
+
+Each was reported in the conversation in the words quoted in TESTING.md. The
+author did not name the commit each was cleared on; the commit given is the
+one the author reported pushing in the same message as the gate.
+
+| Gate | Cleared | Commit |
+|---|---|---|
+| WE4 theme accepted | 13 October 2026 | f9285fd |
+| WE5 window, placement and tick | 13 October 2026 | a2a6071 |
+| WE6 desktop citizenship and menu | 13 October 2026 | f019a50 |
+| WE7 scale | 13 October 2026 | 3212ab9 (not yet pushed when the gate was reported) |
+| WE8 idle working set on both architectures | outstanding | |

@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"runtime/debug"
 	"sync/atomic"
 	"time"
 
@@ -179,6 +180,7 @@ func (shell *shell) start() error {
 		shell.addTrayIcon()
 	}
 	shell.updateWindowText(time.Now())
+	returnMemoryToWindows()
 
 	shell.logger.Info("started",
 		"version", product.Version,
@@ -417,6 +419,7 @@ func (shell *shell) handleMessage(message uint32, wParam uintptr, lParam uintptr
 		shell.dpi = int(wParam & 0xFFFF)
 		suggested := rectangleFromLParam(lParam)
 		shell.redraw(&win32Point{X: suggested.Left, Y: suggested.Top})
+		returnMemoryToWindows()
 		shell.logger.Info("dpi changed", "dpi", shell.dpi)
 		return 0
 
@@ -457,4 +460,12 @@ func (shell *shell) noticeTimeZoneChange() {
 		shell.timeZoneChangeLogged = true
 		shell.logger.Warn("time zone changed; the local time follows it after Thyme restarts")
 	}
+}
+
+// returnMemoryToWindows is called after the rare events that rebuild the
+// static layer (start, scale, seconds, DPI). A rebuild briefly needs several
+// frames of scratch memory that Go would otherwise keep for the life of the
+// process; a widget left running all day should hold only what it uses.
+func returnMemoryToWindows() {
+	debug.FreeOSMemory()
 }

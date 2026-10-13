@@ -36,8 +36,9 @@ func RenderTrayIcon(sizePixels int) (Frame, error) {
 	}
 	cornerRadius := size * 0.22
 
-	fillRoundedRectangle(canvas, panel, cornerRadius, 0, theme.PanelFill)
 	rasterizer := vector.NewRasterizer(sizePixels, sizePixels)
+	fillRoundedRectangle(rasterizer, canvas, panel, cornerRadius, 0, theme.PanelFill)
+	rasterizer.Reset(sizePixels, sizePixels)
 	addRoundedRectanglePath(rasterizer, panel, cornerRadius, outlineWidth/2, false)
 	addRoundedRectanglePath(rasterizer, panel, cornerRadius, -outlineWidth/2, true)
 	rasterizer.Draw(canvas, canvas.Bounds(), image.NewUniform(theme.Outline), image.Point{})
@@ -48,8 +49,8 @@ func RenderTrayIcon(sizePixels int) (Frame, error) {
 	centre := math.Round(size/2 - handWidth/2)
 	minuteHand := floatRect{Min: floatPoint{X: centre, Y: math.Round(size * 0.22)}, Max: floatPoint{X: centre + handWidth, Y: centre + handWidth}}
 	hourHand := floatRect{Min: floatPoint{X: centre, Y: centre}, Max: floatPoint{X: math.Round(size * 0.72), Y: centre + handWidth}}
-	fillRoundedRectangle(canvas, minuteHand, 0, 0, theme.TimeText)
-	fillRoundedRectangle(canvas, hourHand, 0, 0, theme.TimeText)
+	fillRoundedRectangle(rasterizer, canvas, minuteHand, 0, 0, theme.TimeText)
+	fillRoundedRectangle(rasterizer, canvas, hourHand, 0, 0, theme.TimeText)
 
 	pixels := make([]byte, sizePixels*sizePixels*4)
 	if convertError := ConvertRGBAToBGRA(pixels, canvas); convertError != nil {

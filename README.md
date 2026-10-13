@@ -4,9 +4,8 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE7. The widget runs, drags, survives Show Desktop, scales in five
-steps, and has a menu and a tray icon. Release builds arrive in WE8. Requires
-Windows 10 version 1703 or later.
+Version 1.0.0. Runs on Windows 10 version 1703 or later and Windows 11, on
+amd64 and arm64.
 
 ## Using it
 
@@ -47,6 +46,26 @@ $env:CGO_ENABLED = "0"; $env:GOOS = "windows"; $env:GOARCH = "arm64"; go build -
 ```
 
 TESTING.md lists every suite and check, and where each runs.
+
+### Release builds
+
+A release exe is the build above with symbols stripped (`-s -w`), for each
+architecture, then checked against the 6 MiB size budget:
+
+```bash
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o thyme_amd64.exe ./cmd/thyme
+```
+
+```bash
+CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsgui -s -w" -o thyme_arm64.exe ./cmd/thyme
+```
+
+```bash
+go run ./tools/sizecheck thyme_amd64.exe thyme_arm64.exe
+```
+
+There is no installer and the exe is not signed (specification WE8). Put it
+anywhere you can write to and run it; Start with Windows remembers where.
 
 ## Settings
 

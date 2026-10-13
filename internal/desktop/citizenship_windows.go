@@ -207,6 +207,7 @@ func (shell *shell) perform(command MenuCommand, origin ActionOrigin) {
 		shell.redraw(nil)
 		shell.clampOntoAMonitor()
 		shell.aimTimer()
+		returnMemoryToWindows()
 		shell.saveSettings(origin)
 
 	case CommandAlwaysOnTop:
@@ -275,5 +276,6 @@ func (shell *shell) changeScale(scalePercent int, origin ActionOrigin) {
 	shell.logger.Info("scale changed", "scalePercent", scalePercent, "origin", string(origin))
 	shell.redraw(nil)
 	shell.clampOntoAMonitor()
+	returnMemoryToWindows()
 	shell.saveSettings(origin)
 }

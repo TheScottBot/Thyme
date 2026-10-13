@@ -1021,3 +1021,135 @@ go test -count=1 -v -run Scale ./internal/desktop/ ./internal/render/
 (13 October 2026: CI run 38463349829 for the WE6 push f019a50 passed on all
 three runners, including the new startup, menu, spoken time and tray icon
 tests, and the extended struct size test on both Windows architectures.)
+
+(13 October 2026, later the same day: the author cleared the WE7 gate in the
+words "WE7 gate passed" and reported pushing it. At the start of WE8 the
+remote's main was still f019a50 and the local commit 3212ab9 had not reached
+GitHub, so no CI run exists for WE7 yet.)
+
+## WE8 Plan, 13 October 2026
+
+### WU6, measured
+
+Release builds, `CGO_ENABLED=0 -trimpath -ldflags "-H windowsgui -s -w"`,
+go1.27.2, measured 13 October 2026:
+
+| Build | Bytes |
+|---|---|
+| windows/amd64, before the WE8 code changes | 4,348,928 |
+| windows/arm64, before the WE8 code changes | 4,065,280 |
+| windows/amd64, final WE8 tree | 4,352,512 |
+| windows/arm64, final WE8 tree | 4,068,352 |
+
+Inside WU6's 3 to 6 MB estimate. `go version -m` on the arm64 build lists
+golang.org/x/image v0.47.0, golang.org/x/sys v0.49.0 and golang.org/x/text
+v0.43.0. Author's decision, 13 October 2026: a 6 MiB (6,291,456 byte) budget
+for each exe, enforced in CI.
+
+### Dependency record: golang.org/x/text v0.43.0 (datum 0.13)
+
+- Behaviour: required by golang.org/x/image's font packages; Thyme does not
+  import it directly.
+- Why: it arrives with x/image (WD3); removing it means replacing x/image.
+- Maintenance: part of the Go project.
+- Licence: BSD 3 clause, the Go licence.
+- Size: included in the measured exe sizes above.
+- Security: processes only the embedded font's data.
+- Tests: covered by the render suite through x/image.
+- Replacement cost: that of x/image.
+
+### WU7, measured
+
+On this machine (Windows 11 26200, arm64, 144 DPI), release build, seconds on:
+
+| Build | Working set | Private | Over |
+|---|---|---|---|
+| Before the WE8 changes | 24.0 to 26.3 MB | 23.0 to 24.8 MB | 180 s |
+| Same, `GOGC=20` | 24.5 MB | 23.1 MB | 45 s |
+| Same, `GOMEMLIMIT=10MiB` | 23.3 MB | 21.9 MB | 45 s |
+| After the WE8 changes | 22.0 to 22.2 MB | 20.5 to 20.7 MB | 120 s |
+| A Go program that only sleeps, with `time/tzdata` | 7.0 MB | 11.8 MB | 10 s |
+
+A throwaway test (deleted after) read Go's own statistics after one frame at
+scale 1.5: 3.5 MB of live heap (three reused 0.9 MB frame buffers and the font)
+but 16.6 MB of heap held from Windows, because each static layer shape made
+its own frame sized rasterizer. Two changes followed, the first a refactor
+under green tests (every golden image unchanged), the second measured:
+
+- one rasterizer is reused for every shape of every rebuild;
+- the shell calls `debug.FreeOSMemory` after the rare events that rebuild the
+  static layer (start, scale, seconds, DPI change).
+
+Together they saved about 4 MB. WU7's 15 MB came from DeskTick's C++ figure;
+the Go runtime alone takes about half of it. Author's decision, 13 October
+2026: replace WU7 with a 30 MB working set budget, measured by the author
+after ten minutes idle on both architectures.
+
+### Version
+
+Author's decision, 13 October 2026: 1.0.0, the first complete release of
+specification version 1. `product.Version` holds it; the tag is the author's.
+
+## WE8 Execute, 13 October 2026
+
+### Size check proven against a planted oversized build
+
+Run for real, 13 October 2026: `go run ./tools/sizecheck` on the two real
+release builds printed that both are within 6,291,456 bytes and exited 0. The
+amd64 build padded with 2,500,000 zero bytes (6,852,512 bytes) was reported
+over the budget and the check exited 1. The planted file was deleted. The
+unit tests of `repocheck.FindOversizedFiles` repeat the proof on every run,
+and refuse a missing file or an empty list rather than passing them. The CI
+step was run locally in bash exactly as written, with `RUNNER_TEMP` set, and
+passed.
+
+### Release confirmation (datum Stage three)
+
+Every decision, with where its answer is recorded:
+
+| Item | Decision | Recorded in |
+|---|---|---|
+| WD1 licence and provenance | clean room; MIT, TheScottBot | WE1 Plan |
+| WD2 name | Thyme | WE1 Plan |
+| WD3 rendering route | pure Go | WE4 Plan |
+| WD4 font | JetBrains Mono Regular, embedded | WE4 Plan, PROVENANCE.md |
+| WD5 size change | Scale submenu, five steps | WE3 Plan |
+| WD6 settings format | JSON | WE3 Plan |
+| WD7 language | English only | known limitation in README.md |
+| WD8 seconds | toggle, default on | WE2 Plan |
+| WD9 accessibility | tray on by default, keyboard reachable, spoken window text | WE3 Plan |
+| WD10 platforms | Windows 10 and 11, amd64 and arm64 | WE1 Plan |
+| WE1 race detector on arm64 | arm64 runner without race | IMPLEMENTATION_DEVIATIONS.md |
+| WE3 settings version | version 1, no clobber | IMPLEMENTATION_DEVIATIONS.md |
+| WE4 design scale | the mock-up is 200 percent | WE4 Plan |
+| WE5 time zone change | known limitation, logged; live tracking later | README.md |
+| WE6 Task Manager disable | ticking clears Thyme's own entry | WE6 Plan |
+| WE8 size budget, memory budget, version | 6 MiB, 30 MB, 1.0.0 | this record |
+| WU1 to WU5 | measured from the mock-up | WE4 Plan |
+| WU6, WU7 | measured, then budgets decided | this record |
+
+- IMPLEMENTATION_DEVIATIONS.md: seven entries, each with the author's decision.
+- Supported platforms named: README.md and HARDWARE_COMPATIBILITY.md.
+- Known limitations published: README.md.
+- CHANGELOG.md: the 1.0.0 entry names the contract digests (none), shared
+  code (none) and the gates with their commits.
+
+Not done here, by the specification's exclusions: code signing, an
+installer, MSIX and automatic update.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64, 144 DPI. Toolchain go1.27.2.
+staticcheck 2026.2.2 (0.8.2). Commands are those of the WE1 report, plus the
+release builds and size check in README.md.
+
+| Item | Result |
+|---|---|
+| Focused tests: size check | pass; seen failing against a stub first |
+| Full suite | pass, every golden image unchanged by the rasterizer refactor |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean |
+| Release builds and size check | both within budget; a planted oversized build fails |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Tests skipped | none |
+| Author gate | WE8 idle working set after ten minutes on both architectures: outstanding |

@@ -1,2 +1,4 @@
-# The exe built by the README command, at the repository root.
+# The exes built by the README commands, at the repository root.
 /thyme.exe
+/thyme_amd64.exe
+/thyme_arm64.exe

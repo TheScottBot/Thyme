@@ -99,3 +99,15 @@ jobs:
           GOOS: windows
           GOARCH: arm64
         run: go build -trimpath -ldflags "-H windowsgui" ./...
+
+      # The release builds exactly as README.md gives them, checked against
+      # the size budget agreed in WE8. The size check's own tests prove it
+      # fails on an oversized file.
+      - name: release builds and size budget
+        env:
+          CGO_ENABLED: "0"
+          GOOS: windows
+        run: |
+          GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui -s -w" -o "$RUNNER_TEMP/thyme_amd64.exe" ./cmd/thyme
+          GOARCH=arm64 go build -trimpath -ldflags "-H windowsgui -s -w" -o "$RUNNER_TEMP/thyme_arm64.exe" ./cmd/thyme
+          GOOS= go run ./tools/sizecheck "$RUNNER_TEMP/thyme_amd64.exe" "$RUNNER_TEMP/thyme_arm64.exe"

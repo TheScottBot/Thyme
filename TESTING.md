@@ -13,6 +13,7 @@ All commands run from the repository root.
 | Static analysis | `go install honnef.co/go/tools/cmd/staticcheck@v0.8.2`, then `GOOS=windows "$(go env GOPATH)/bin/staticcheck" -checks all ./...` and the same with `GOOS=linux` | CI: every runner |
 | Import boundary and prose scan | `go run ./tools/repocheck` | CI: every runner |
 | Settings parser fuzzing | `go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=30s ./internal/settings` | CI: every runner, 30 s per run |
+| Release builds and size budget | the release build commands in README.md, then `go run ./tools/sizecheck` on both exes (6 MiB each) | CI: every runner |
 | Cross builds | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui" ./...`, and the same with `GOARCH=arm64` | CI: every runner |
 
 The race detector needs cgo on Linux and Windows, so the race runs set
@@ -122,8 +123,15 @@ a 412,824 byte frame at 100 percent.
      and date. If it does not, the gap is recorded as a known limitation.
   8. Optional, if the author uses a wallpaper slideshow: Win+D still spares
      the widget with the slideshow on.
-- WE7. Outstanding. On a 100 percent display and on a 200 percent display,
+- WE7. Cleared by the author, 13 October 2026, in their words: "WE7 gate
+  passed". Recorded from the conversation; the displays used and what was
+  seen at each step were not written down. On a 100 percent display and on a 200 percent display,
   choose each Scale step in turn (75, 100, 125, 150, 200): each looks right,
   the widget keeps its top left corner, a step that would run off the screen
   is pulled back on, and the step chosen is ticked and remembered after Exit
   and restart.
+- WE8. Outstanding. With the release build for each architecture (README.md),
+  start Thyme, leave it idle for ten minutes with seconds on, then read its
+  working set with `(Get-Process thyme).WorkingSet64 / 1MB` in PowerShell
+  (Task Manager's default Memory column is the private working set, a
+  different figure). Add the two results to HARDWARE_COMPATIBILITY.md against the 30 MB budget.

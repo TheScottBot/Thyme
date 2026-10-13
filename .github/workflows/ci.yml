@@ -1,0 +1,96 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: check (${{ matrix.runner }})
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      # Every runner reports, so an arm64 only fault is not hidden behind an
+      # earlier failure on another runner.
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            race: true
+          - runner: windows-2025
+            race: true
+          # The Go toolchain has no race detector on windows/arm64, so this
+          # runner tests without it. Recorded in IMPLEMENTATION_DEVIATIONS.md.
+          - runner: windows-11-arm
+            race: false
+    defaults:
+      run:
+        shell: bash
+    steps:
+      # Actions are pinned by commit, with the release tag beside it, so the
+      # exact version is recorded rather than whatever a tag later points at.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+
+      # A newer toolchain must never quietly build a reproduction report.
+      - name: Toolchain is the pinned one
+        run: test "$(go env GOVERSION)" = "go1.27.2"
+
+      - name: gofmt
+        run: |
+          unformatted="$(gofmt -l .)"
+          if [ -n "$unformatted" ]; then echo "$unformatted"; exit 1; fi
+
+      # Vetted and analysed for both operating systems on every runner, because
+      # each run only sees the files its GOOS selects and the shell is Windows
+      # only.
+      - name: go vet
+        run: |
+          GOOS=windows go vet ./...
+          GOOS=linux go vet ./...
+
+      # Installed for the host first: with go run, GOOS would also cross
+      # compile staticcheck itself, which then cannot run on the runner.
+      - name: staticcheck
+        run: |
+          go install honnef.co/go/tools/cmd/staticcheck@v0.8.2
+          staticcheck_binary="$(go env GOPATH)/bin/staticcheck"
+          GOOS=windows "$staticcheck_binary" -checks all ./...
+          GOOS=linux "$staticcheck_binary" -checks all ./...
+
+      # The import boundary check and the prose and typography scan. Their
+      # tests in internal/repocheck prove them against planted violations on
+      # every run.
+      - name: repocheck
+        run: go run ./tools/repocheck
+
+      # The race detector needs cgo outside macOS, so tests run with cgo on
+      # even though every shipped build is CGO_ENABLED=0.
+      - name: test with race detector
+        if: matrix.race
+        env:
+          CGO_ENABLED: "1"
+        run: go test -race -count=1 ./...
+
+      - name: test
+        if: ${{ !matrix.race }}
+        run: go test -count=1 ./...
+
+      - name: cross build windows/amd64
+        env:
+          CGO_ENABLED: "0"
+          GOOS: windows
+          GOARCH: amd64
+        run: go build -trimpath -ldflags "-H windowsgui" ./...
+
+      - name: cross build windows/arm64
+        env:
+          CGO_ENABLED: "0"
+          GOOS: windows
+          GOARCH: arm64
+        run: go build -trimpath -ldflags "-H windowsgui" ./...

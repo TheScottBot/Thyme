@@ -40,7 +40,8 @@ its menu (Exit), pull, and build again.
 Do not use `go run` for everyday use. It builds the exe in a temporary folder
 and deletes it when Thyme exits, so Start with Windows would record a path
 that no longer exists, and a sign in program pointing at a deleted file in a
-temporary folder is a security weakness in its own right.
+temporary folder is a security weakness in its own right. Thyme therefore greys
+out Start with Windows when it finds itself running from the temporary folder.
 
 To build exactly a released version, check out its tag first, for example
 `git checkout v1.0.0`; `go.sum` pins every dependency by checksum.

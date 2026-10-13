@@ -47,6 +47,8 @@ type MenuState struct {
 	Settings                settings.Settings
 	StartWithWindows        bool
 	StartWithWindowsUnknown bool
+
+	StartWithWindowsFromTemporaryExe bool
 }
 
 // The labels carry an ampersand before their access key, so every item can be
@@ -82,6 +84,13 @@ func BuildMenu(state MenuState) []MenuEntry {
 	startWithWindows := toggle(labelStartWithWindows, CommandStartWithWindows, state.StartWithWindows)
 	if state.StartWithWindowsUnknown {
 		startWithWindows.Checked, startWithWindows.Enabled = false, false
+	}
+	// From a temporary exe (go run, or a zip opened in Explorer) the Run
+	// value would name a file that is soon deleted: a sign in entry pointing
+	// at nothing, which anything could later fill. It can be turned off, so
+	// an existing entry is never trapped, but not on.
+	if state.StartWithWindowsFromTemporaryExe && !startWithWindows.Checked {
+		startWithWindows.Enabled = false
 	}
 	return []MenuEntry{
 		toggle(labelSeconds, CommandSeconds, state.Settings.ShowSeconds),

@@ -64,6 +64,10 @@ The author creates the tag; until then this heading says so.
   send one; repeating render failures are logged on doubling, not every tick;
   govulncheck runs in CI for both operating systems. A tree wide check fails
   any network import in Thyme's own code.
+- **Start with Windows from a temporary exe.** When Thyme runs from the
+  temporary folder (`go run`, or a zip opened in Explorer), Start with Windows
+  cannot be turned on, since the Run value would name a file about to be
+  deleted; an existing entry can still be turned off. Logged once at start.
 
 ### Contract digests
 

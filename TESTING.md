@@ -61,6 +61,7 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `internal/desktop` | Win32 struct sizes against the SDK (Windows runners only); the menu model's items, order, ticks and greyed states; Start with Windows against a fake registry: the quoted Run value, Task Manager's disable, enabling clearing it, idempotence, partial failures and the required origin; the window and tray behaviour is the WE5 and WE6 author gates |
 | `internal/clockmodel`, spoken time | the window's text for screen readers, in the local zone |
 | `internal/render`, scale steps | golden images of the mock-up at 75, 100, 125, 150 and 200 percent |
+| `internal/desktop`, temporary exe guard | a path inside the temporary folder whatever its case, slashes or trailing separator; not a sibling sharing its first letters, not a path climbing out with "..", never an empty folder; Start with Windows greyed from a temporary exe when off, still available when on |
 | `internal/desktop`, scale | every step enabled with the current one ticked; each Scale command maps to its step and no other command does |
 | `internal/render`, tray icon | golden images at 16, 20, 24 and 32 pixels; opaque middle, clear corners; size bounds |
 

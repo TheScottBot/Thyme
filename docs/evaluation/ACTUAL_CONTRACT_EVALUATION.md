@@ -1237,3 +1237,14 @@ Tests written first; then proven on the real tree with `net/http` planted in a
 Windows only file of `internal/desktop`, which the operating system boundary
 exempts but this rule does not: reported and exit 1; clean and exit 0 after
 removal.)
+
+(13 October 2026, the same evening: at the author's request, a guard on Start
+with Windows. `IsInsideFolder`, pure and tested on every runner, decides
+whether the exe lies in the temporary folder; the shell expands both paths
+with `GetLongPathName` first and decides once at start. From a temporary exe
+the menu item is greyed while off, still available while on, and the command
+refuses to turn it on. Tests seen failing first. Run for real: an exe built
+into `%TEMP%\go-build-guard-check\exe` logged the warning before its start
+line; the same build outside the temporary folder did not. Not covered: a
+temporary folder reached through a symbolic link or junction, which is not
+resolved.)

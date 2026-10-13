@@ -56,6 +56,7 @@ type shell struct {
 	defViewMissingLogged  bool
 	trayIcon              uintptr
 	trayShown             bool
+	exeIsTemporary        bool
 	lastWindowText        string
 
 	updateLayeredWindowFailures int
@@ -169,6 +170,7 @@ func (shell *shell) start() error {
 		return fmt.Errorf("finding the exe: %w", exePathError)
 	}
 	shell.exePath = exePath
+	shell.noteTemporaryExe()
 	shell.taskbarCreatedMessage = registerWindowMessage("TaskbarCreated")
 
 	startPosition := win32Point{X: shell.current.Position.X, Y: shell.current.Position.Y}

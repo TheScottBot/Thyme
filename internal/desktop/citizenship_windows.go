@@ -1,6 +1,7 @@
 package desktop
 
 import (
+	"os"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -182,7 +183,7 @@ func buildNativeMenu(entries []MenuEntry) uintptr {
 // it close cleanly. Both can raise the widget, so the z order is reapplied.
 func (shell *shell) showMenu(origin ActionOrigin, x int32, y int32) {
 	startWithWindows, unknown := shell.startWithWindowsState()
-	menu := buildNativeMenu(BuildMenu(MenuState{Settings: shell.current, StartWithWindows: startWithWindows, StartWithWindowsUnknown: unknown}))
+	menu := buildNativeMenu(BuildMenu(MenuState{Settings: shell.current, StartWithWindows: startWithWindows, StartWithWindowsUnknown: unknown, StartWithWindowsFromTemporaryExe: shell.exeIsTemporary}))
 	setForegroundWindow(shell.window)
 	chosen := trackPopupMenu(menu, shell.window, x, y)
 	postMessage(shell.window, wmNull)
@@ -219,6 +220,10 @@ func (shell *shell) perform(command MenuCommand, origin ActionOrigin) {
 	case CommandStartWithWindows:
 		enabled, _ := shell.startWithWindowsState()
 		change := StartupChange{Enable: !enabled, Origin: origin}
+		if change.Enable && shell.exeIsTemporary {
+			shell.logger.Warn("start with Windows not turned on: this exe is in the temporary folder", "origin", string(origin))
+			return
+		}
 		if changeError := ChangeStartup(registryStartupStore{}, shell.exePath, change); changeError != nil {
 			shell.logger.Warn("start with Windows not changed", "enable", change.Enable, "origin", string(origin), "reason", eventlog.ReasonWithoutPath(changeError))
 			return
@@ -278,4 +283,29 @@ func (shell *shell) changeScale(scalePercent int, origin ActionOrigin) {
 	shell.clampOntoAMonitor()
 	returnMemoryToWindows()
 	shell.saveSettings(origin)
+}
+
+// longPathName expands 8.3 short names (PROGRA~1 and the like), so the
+// temporary folder check compares the paths Windows would show. If Windows
+// cannot expand a path, it is compared as given.
+func longPathName(shortOrLongPath string) string {
+	pathPointer, conversionError := windows.UTF16PtrFromString(shortOrLongPath)
+	if conversionError != nil {
+		return shortOrLongPath
+	}
+	expanded := make([]uint16, windows.MAX_LONG_PATH)
+	length, expandError := windows.GetLongPathName(pathPointer, &expanded[0], uint32(len(expanded)))
+	if expandError != nil || length == 0 || int(length) > len(expanded) {
+		return shortOrLongPath
+	}
+	return windows.UTF16ToString(expanded[:length])
+}
+
+// noteTemporaryExe decides, once at start, whether this exe lives in the
+// temporary folder, where Start with Windows must not point.
+func (shell *shell) noteTemporaryExe() {
+	shell.exeIsTemporary = IsInsideFolder(longPathName(shell.exePath), longPathName(os.TempDir()))
+	if shell.exeIsTemporary {
+		shell.logger.Warn("running from the temporary folder: Start with Windows can be turned off but not on; build into a folder of your own, as README.md describes")
+	}
 }

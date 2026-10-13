@@ -81,6 +81,11 @@ jobs:
         if: ${{ !matrix.race }}
         run: go test -count=1 ./...
 
+      # Datum 0.10 and Stage three: a short fuzz run on the settings parser on
+      # every change, since a hand edited file is the likeliest crash.
+      - name: fuzz settings parser
+        run: go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=30s ./internal/settings
+
       - name: cross build windows/amd64
         env:
           CGO_ENABLED: "0"

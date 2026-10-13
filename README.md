@@ -4,7 +4,8 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE1. The skeleton and its checks exist; there is no clock yet.
+Status: WE3. The clock model and settings exist as tested packages; there is no
+window yet.
 
 ## Building
 
@@ -27,6 +28,50 @@ CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsg
 
 TESTING.md lists every suite and check, and where each runs.
 
+## Settings
+
+Thyme keeps its settings in `%LOCALAPPDATA%\Thyme\settings.json`, never beside
+the exe. The file is JSON. A hand edit takes effect the next time Thyme starts;
+a running Thyme does not watch the file.
+
+```json
+{
+  "version": 1,
+  "position": { "x": 120, "y": 120 },
+  "scalePercent": 100,
+  "alwaysOnTop": false,
+  "showInTray": true,
+  "showSeconds": true,
+  "zones": [
+    { "label": "UTC", "timeZone": "UTC" },
+    { "label": "LDN", "timeZone": "Europe/London" },
+    { "label": "BER", "timeZone": "Europe/Berlin" },
+    { "label": "SAO", "timeZone": "America/Sao_Paulo" }
+  ]
+}
+```
+
+Those are also the defaults.
+
+| Field | Meaning | Accepted values |
+|---|---|---|
+| `version` | the settings format | `1` only |
+| `position` | top left corner, physical pixels of the virtual screen | whole numbers `x` and `y`, negative allowed; Thyme pulls the widget back on screen |
+| `scalePercent` | size relative to the design size | `75`, `100`, `125`, `150` or `200` |
+| `alwaysOnTop` | keep above other windows | `true` or `false` |
+| `showInTray` | show the tray icon, the keyboard's way to the menu | `true` or `false` |
+| `showSeconds` | show seconds; off wakes once a minute instead of once a second | `true` or `false` |
+| `zones` | world clocks, zero to four | each a `label` of one to three printable characters and a `timeZone` IANA name such as `Europe/London` |
+
+Every field is required and no other field is allowed. A field that is
+missing, unknown, duplicated, of the wrong type or out of range is replaced by
+its default, and the rejection is logged by field name and reason, never the
+file's contents. A file over 4096 bytes, one that is not a single JSON object,
+or one without `"version": 1` is ignored whole: the defaults are used and Thyme
+does not save over it, so nothing it could not understand is destroyed. An
+unknown time zone name is not a settings error: it is reported, naming the
+label, when the zone is loaded.
+
 ## Layout
 
 | Path | Holds |
@@ -38,6 +83,7 @@ TESTING.md lists every suite and check, and where each runs.
 | `internal/placement` | work area clamping and scale arithmetic |
 | `internal/desktop` | the Windows shell; the only package touching the OS |
 | `cmd/thyme` | the entry point, wiring only |
+| `internal/product` | the product name, once |
 | `internal/repocheck`, `tools/repocheck` | the import boundary check and the prose scan |
 
 ## Where it came from

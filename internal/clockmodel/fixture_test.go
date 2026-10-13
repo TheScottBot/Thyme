@@ -6,7 +6,10 @@ import (
 )
 
 // mockUpZoneNames are the four world clocks shown in docs/theme.png, as the
-// specification maps their labels to IANA names.
+// specification maps their labels to IANA names. The same four are the
+// settings defaults in internal/settings; the duplication is deliberate
+// (datum 0.7), because these pin the mock-up instant's expected output and
+// must not move if the defaults ever change.
 var mockUpZoneNames = []struct {
 	label    string
 	ianaName string

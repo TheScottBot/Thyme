@@ -20,5 +20,11 @@ tag, and which author gates were cleared at which commit.
   the label, for an unknown, empty or host dependent name. Snapshot gives the
   time (with or without seconds), the lower case date line and each zone's
   HH:MM. NextWake aims at the next whole second or minute plus a 20 ms margin.
+- **WE3 settings.** JSON at `%LOCALAPPDATA%\Thyme\settings.json`, version 1, read
+  bounded to 4096 bytes before parsing. Every rejected field falls back to its
+  default and is counted by reason; files Thyme cannot understand are never
+  saved over. Saves are written to a temporary file and renamed over. A fuzz
+  target runs in CI.
+- **`internal/product`** holds the name Thyme once.
 
 No contract digest applies: Thyme implements no shared contract.

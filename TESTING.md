@@ -12,6 +12,7 @@ All commands run from the repository root.
 | Vet, both operating systems | `GOOS=windows go vet ./...` and `GOOS=linux go vet ./...` | CI: every runner |
 | Static analysis | `go install honnef.co/go/tools/cmd/staticcheck@v0.8.2`, then `GOOS=windows "$(go env GOPATH)/bin/staticcheck" -checks all ./...` and the same with `GOOS=linux` | CI: every runner |
 | Import boundary and prose scan | `go run ./tools/repocheck` | CI: every runner |
+| Settings parser fuzzing | `go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=30s ./internal/settings` | CI: every runner, 30 s per run |
 | Cross builds | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui" ./...`, and the same with `GOARCH=arm64` | CI: every runner |
 
 The race detector needs cgo on Linux and Windows, so the race runs set
@@ -44,6 +45,7 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 |---|---|
 | `internal/repocheck` | both tree wide checks against planted violations |
 | `internal/clockmodel` | the mock-up instant, daylight saving transitions in every mock-up zone, the date line, next wake at .000, .999 and .980 seconds in both modes, and zone load failures by reason |
+| `internal/settings` | every field round trips; the size bound refuses one byte over before parsing and accepts exactly the bound; every rejection reason, each costing only its field; whole file refusals and overwrite protection; rejections never carry file contents; atomic save, temporary file removed on failure; the fuzz target `FuzzParse` |
 
 ## Testing deviations
 
@@ -51,4 +53,4 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 
 ## Author gates
 
-None in WE1 or WE2.
+None in WE1, WE2 or WE3.

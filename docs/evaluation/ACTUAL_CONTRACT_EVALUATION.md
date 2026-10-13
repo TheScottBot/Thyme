@@ -457,3 +457,119 @@ go test -count=1 -v ./internal/clockmodel/
 
 Outstanding: the author's reproduction, and the suites seen green on the CI
 runners, which have not yet run because the repository has not been pushed.
+
+(13 October 2026, later the same day: the author pushed commit 77366e2. CI run
+38454677843 passed on all three runners. On ubuntu-24.04 and windows-2025 the
+race detector step ran and passed, so the windows-2025 gcc is on the PATH as
+assumed; on windows-11-arm the plain test step ran, as designed.)
+
+## WE3 Plan, 13 October 2026
+
+### Decisions taken by the author
+
+| Id | Decision | Recorded |
+|---|---|---|
+| WD6 | JSON through encoding/json, no dependency. | 13 October 2026 |
+| WD5 | A Scale submenu with steps of 75, 100, 125, 150 and 200 percent. Asked now because the settings file stores the step. | 13 October 2026 |
+| WD9 | Tray icon on by default, every action in the keyboard reachable tray menu, window text set to the spoken time. Asked now because the tray default is a settings default. | 13 October 2026 |
+| WE3 version | A required `"version": 1`; a missing or other version refuses the file whole, uses the defaults and protects the file from being saved over. | 13 October 2026 |
+
+### The settings contract
+
+Provisional under datum 0.11 until the author freezes it. Shape: one JSON
+object with exactly the members `version`, `position` (`x`, `y`),
+`scalePercent`, `alwaysOnTop`, `showInTray`, `showSeconds`, `zones` (each
+`label`, `timeZone`). Member names are camelCase, the common Go JSON idiom;
+the reference implementations use PascalCase keys, which is the .NET
+configuration idiom, and datum 0.5 puts the language's idiom first. Bounds:
+4096 bytes, four zones, labels of one to three printable characters, time zone
+names of one to 64 bytes, scale one of the WD5 steps, positions within 32 bit
+signed integers.
+
+### Rename on Windows, read from source
+
+go1.27.2 `src/os/file_windows.go` and `src/internal/syscall/windows/syscall_windows.go`:
+`os.Rename` calls `MoveFileExW` with `MOVEFILE_REPLACE_EXISTING` only (no
+`MOVEFILE_WRITE_THROUGH`).
+
+### Experiment: same folder rename over an existing file on NTFS
+
+Run for real, 13 October 2026, this machine, volume C: reported as NTFS by
+`Get-Volume`. For ten seconds a writer created a temporary file in the same
+folder, wrote, synced and closed it, and renamed it over `settings.json`,
+alternating a 23 byte and a 640 byte document; a reader goroutine read the
+target continuously and compared it with both.
+
+| Measure | Count |
+|---|---|
+| Successful renames | 2,450 |
+| Failed renames (`Access is denied`) | 4,016 |
+| Reads that returned one of the two complete documents | 100,365 |
+| Reads that returned anything else (torn) | 0 |
+| Reads that found no file | 0 |
+| Reads that failed with another error | 7,769 |
+
+Conclusions accepted: a reader never sees a partial or missing file, so the
+rename is atomic enough for the purpose. The rename fails, rather than waits,
+while another handle has the target open, and the reader's own open fails
+while a rename is in flight. Save therefore returns the failure for the shell
+to log and count, and removes its temporary file. The experiment ran without a
+power cut, so durability across a crash rests on the rename design, not on a
+measurement.
+
+### Fuzzing platforms, read from source
+
+go1.27.2 `src/internal/platform/supported.go`: fuzzing is supported on windows
+and linux, and coverage instrumented on amd64 and arm64, so all three runners
+run a guided fuzz.
+
+## WE3 Execute, 13 October 2026
+
+### Findings
+
+- Two silent behaviours of `encoding/json` would have defeated the WE3 rules:
+  a duplicated member is resolved by letting the last one win, and `null`
+  decodes to the zero value. Both are now rejections, with tests.
+- Overwrite protection was first implemented for every whole file refusal
+  without a failing test for the non version cases. That breached datum 0.4;
+  the test was then written, seen to fail with the protection disabled for
+  those cases, and passes with it restored. The extension itself awaits the
+  author (IMPLEMENTATION_DEVIATIONS.md).
+- A local fuzz run of `FuzzParse` for 60 seconds executed 2,366,326 inputs
+  with no failure and found 377 interesting inputs, none kept in the tree.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64. Toolchain go1.27.2. staticcheck
+2026.2.2 (0.8.2). Commands are those of the WE1 report, plus:
+
+```bash
+go test -count=1 -v ./internal/settings/
+```
+
+```bash
+go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=60s ./internal/settings/
+```
+
+(13 October 2026, correction to the WE1 Plan record: it said acronyms are
+written as one word, after the Rust reference. staticcheck ST1003, which is Go
+idiom, requires its listed initialisms such as JSON, ID and URL in capitals,
+and datum 0.5 puts the language's conventions first. Go initialisms are
+therefore written in capitals; an acronym outside staticcheck's list is still
+written as one word.)
+
+| Item | Result |
+|---|---|
+| Focused tests, `internal/settings` | pass, all seen failing on assertions against stubs first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean after renaming one parameter that ST1003 flagged |
+| repocheck | clean |
+| Fuzz, 60 s locally | 2,366,326 executions, no failure |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Cross builds | succeed |
+| Tests skipped | none |
+| Tests requiring the author | none; WE3 has no author gate |
+
+Outstanding: the author's reproduction and the CI run of this change, and the
+author's decision on the two agent proposals in IMPLEMENTATION_DEVIATIONS.md
+(overwrite protection beyond version, and `internal/product`).

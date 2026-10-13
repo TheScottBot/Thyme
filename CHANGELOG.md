@@ -44,5 +44,8 @@ tag, and which author gates were cleared at which commit.
   Exit. A tray icon drawn at run time from the theme, on by default and
   keyboard reachable. The window's text is the spoken time for screen readers.
   Every change outside the process logs which menu asked for it.
+- **WE7 scale.** The Scale submenu's steps (75, 100, 125, 150 and 200 percent)
+  act: the current one is ticked, and a change redraws at the new size from
+  the top left corner, clamps onto the screen and is saved.
 
 No contract digest applies: Thyme implements no shared contract.

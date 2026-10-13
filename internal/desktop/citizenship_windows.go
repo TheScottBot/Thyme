@@ -196,6 +196,10 @@ func (shell *shell) showMenu(origin ActionOrigin, x int32, y int32) {
 // perform carries out a menu command. Each logs the command and the surface
 // it came from (datum 0.14).
 func (shell *shell) perform(command MenuCommand, origin ActionOrigin) {
+	if scalePercent, isScale := ScalePercentForCommand(command); isScale {
+		shell.changeScale(scalePercent, origin)
+		return
+	}
 	switch command {
 	case CommandSeconds:
 		shell.current.ShowSeconds = !shell.current.ShowSeconds
@@ -257,4 +261,19 @@ func (shell *shell) handleTaskbarCreated() {
 	if shell.current.ShowInTray {
 		shell.addTrayIcon()
 	}
+}
+
+// changeScale applies a Scale step (WE7). The renderer rebuilds its static
+// layer for the new size; the window keeps its top left corner, because
+// UpdateLayeredWindow without a position resizes from there; then it is
+// clamped, since a larger widget may now hang off the screen, and saved.
+func (shell *shell) changeScale(scalePercent int, origin ActionOrigin) {
+	if scalePercent == shell.current.ScalePercent {
+		return
+	}
+	shell.current.ScalePercent = scalePercent
+	shell.logger.Info("scale changed", "scalePercent", scalePercent, "origin", string(origin))
+	shell.redraw(nil)
+	shell.clampOntoAMonitor()
+	shell.saveSettings(origin)
 }

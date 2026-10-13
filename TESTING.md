@@ -53,6 +53,8 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `internal/eventlog` | the cap, one previous file kept, appending to and rotating an earlier run's log, an oversized record kept whole, paths stripped from logged errors |
 | `internal/desktop` | Win32 struct sizes against the SDK (Windows runners only); the menu model's items, order, ticks and greyed states; Start with Windows against a fake registry: the quoted Run value, Task Manager's disable, enabling clearing it, idempotence, partial failures and the required origin; the window and tray behaviour is the WE5 and WE6 author gates |
 | `internal/clockmodel`, spoken time | the window's text for screen readers, in the local zone |
+| `internal/render`, scale steps | golden images of the mock-up at 75, 100, 125, 150 and 200 percent |
+| `internal/desktop`, scale | every step enabled with the current one ticked; each Scale command maps to its step and no other command does |
 | `internal/render`, tray icon | golden images at 16, 20, 24 and 32 pixels; opaque middle, clear corners; size bounds |
 
 ## Golden images
@@ -101,7 +103,9 @@ a 412,824 byte frame at 100 percent.
   7. Idle processor use in Task Manager is zero with seconds off (set
      `"showSeconds": false` in the settings file and restart) and negligible
      with them on.
-- WE6. Outstanding.
+- WE6. Cleared by the author, 13 October 2026, in their words: "WE6 gate
+  passed". Recorded from the conversation; which items were run (item 8 is
+  optional), on which machines, and what Narrator read were not written down.
   1. Win+D leaves the widget visible.
   2. Restart Explorer from Task Manager (Details, explorer.exe, End task, then
      File, Run new task, explorer): the widget stays visible, the tray icon
@@ -118,3 +122,8 @@ a 412,824 byte frame at 100 percent.
      and date. If it does not, the gap is recorded as a known limitation.
   8. Optional, if the author uses a wallpaper slideshow: Win+D still spares
      the widget with the slideshow on.
+- WE7. Outstanding. On a 100 percent display and on a 200 percent display,
+  choose each Scale step in turn (75, 100, 125, 150, 200): each looks right,
+  the widget keeps its top left corner, a step that would run off the screen
+  is pulled back on, and the step chosen is ticked and remembered after Exit
+  and restart.

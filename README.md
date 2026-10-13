@@ -4,9 +4,9 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE6. The widget runs, drags, survives Show Desktop, and has a menu and
-a tray icon. Scale steps arrive in WE7. Requires Windows 10 version 1703 or
-later.
+Status: WE7. The widget runs, drags, survives Show Desktop, scales in five
+steps, and has a menu and a tray icon. Release builds arrive in WE8. Requires
+Windows 10 version 1703 or later.
 
 ## Using it
 

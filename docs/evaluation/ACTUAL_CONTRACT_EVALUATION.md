@@ -974,3 +974,50 @@ go test -count=1 -v ./internal/desktop/ ./internal/clockmodel/ ./internal/render
 | Race detector | not run here (windows/arm64); runs in CI on amd64 |
 | Tests skipped | none |
 | Author gate | WE6: outstanding |
+
+(13 October 2026, later the same day: the author cleared the WE6 gate in the
+words "WE6 gate passed" and pushed f019a50.)
+
+## WE7 Plan and Execute, 13 October 2026
+
+The specification lists no assumption for WE7 beyond WE4's rendering at each
+step, which the new golden images settle, so the Plan stage had nothing to
+read or run.
+
+### Findings
+
+- The WE6 menu test asserted the Scale submenu's presence and not its
+  enabled state, so enabling the steps changed no earlier assertion. The new
+  assertions are in a new test.
+- The golden images for 100 and 200 percent are WE4's own, compared again by
+  the new test; only the 75, 125 and 150 percent images were written, and
+  `git diff` shows no earlier golden image or test changed.
+- Viewed side by side, all five steps keep the same proportions; at 75 percent
+  the zone text is about 13 pixels high at 96 DPI and still legible.
+- A scale change keeps the window's top left corner, because
+  UpdateLayeredWindow without a position resizes from there, then clamps, so
+  a widget grown past the screen's edge is pulled back, then saves.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64, 144 DPI. Toolchain go1.27.2.
+staticcheck 2026.2.2 (0.8.2). Commands are those of the WE1 report, plus:
+
+```bash
+go test -count=1 -v -run Scale ./internal/desktop/ ./internal/render/
+```
+
+| Item | Result |
+|---|---|
+| Focused tests: scale steps in the menu, command mapping, golden images at every step | pass; the menu and mapping tests and the three new images seen failing first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean |
+| Cross builds | succeed |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Tests skipped | none |
+| Author gate | WE7: outstanding |
+
+(13 October 2026: CI run 38463349829 for the WE6 push f019a50 passed on all
+three runners, including the new startup, menu, spoken time and tray icon
+tests, and the extended struct size test on both Windows architectures.)

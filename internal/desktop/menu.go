@@ -65,8 +65,8 @@ func toggle(label string, command MenuCommand, checked bool) MenuEntry {
 	return MenuEntry{Kind: MenuItem, Label: label, Command: command, Checked: checked, Enabled: true}
 }
 
-// BuildMenu returns the menu in the specification's order (WE6). The Scale
-// steps are present but greyed until WE7 makes them act.
+// BuildMenu returns the menu in the specification's order (WE6), with the
+// Scale steps of WD5 and the current one ticked (WE7).
 func BuildMenu(state MenuState) []MenuEntry {
 	scaleSteps := settings.ScaleStepsPercent()
 	scaleEntries := make([]MenuEntry, 0, len(scaleSteps))
@@ -76,7 +76,7 @@ func BuildMenu(state MenuState) []MenuEntry {
 			Label:   strconv.Itoa(scalePercent) + "%",
 			Command: commandScaleFirst + MenuCommand(stepIndex),
 			Checked: scalePercent == state.Settings.ScalePercent,
-			Enabled: false,
+			Enabled: true,
 		})
 	}
 	startWithWindows := toggle(labelStartWithWindows, CommandStartWithWindows, state.StartWithWindows)
@@ -93,4 +93,16 @@ func BuildMenu(state MenuState) []MenuEntry {
 		{Kind: MenuSeparator},
 		{Kind: MenuItem, Label: labelExit, Command: CommandExit, Enabled: true},
 	}
+}
+
+// ScalePercentForCommand maps a Scale submenu command back to its step. It is
+// derived from the same list the menu is built from, so the two cannot
+// disagree, and no other command can set a scale.
+func ScalePercentForCommand(command MenuCommand) (int, bool) {
+	stepIndex := int(command - commandScaleFirst)
+	scaleSteps := settings.ScaleStepsPercent()
+	if stepIndex < 0 || stepIndex >= len(scaleSteps) {
+		return 0, false
+	}
+	return scaleSteps[stepIndex], true
 }

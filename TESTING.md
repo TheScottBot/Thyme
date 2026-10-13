@@ -13,6 +13,7 @@ All commands run from the repository root.
 | Static analysis | `go install honnef.co/go/tools/cmd/staticcheck@v0.8.2`, then `GOOS=windows "$(go env GOPATH)/bin/staticcheck" -checks all ./...` and the same with `GOOS=linux` | CI: every runner |
 | Import boundary and prose scan | `go run ./tools/repocheck` | CI: every runner |
 | Settings parser fuzzing | `go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=30s ./internal/settings` | CI: every runner, 30 s per run |
+| Known vulnerabilities | `go install golang.org/x/vuln/cmd/govulncheck@v1.9.0`, then `GOOS=windows "$(go env GOPATH)/bin/govulncheck" ./...` and the same with `GOOS=linux` | CI: every runner |
 | Release builds and size budget | the release build commands in README.md, then `go run ./tools/sizecheck` on both exes (6 MiB each) | CI: every runner |
 | Cross builds | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui" ./...`, and the same with `GOARCH=arm64` | CI: every runner |
 

@@ -59,6 +59,10 @@ The author creates the tag; until then this heading says so.
   fails either exe over 6 MiB. Static layer rebuilds share one rasterizer and
   hand their scratch memory back, which cut idle memory by about 4 MB.
   Version 1.0.0.
+- **Security pass.** A DPI arriving in a window message is used only if the
+  widget can be drawn at it, since any program running as the same user can
+  send one; repeating render failures are logged on doubling, not every tick;
+  govulncheck runs in CI for both operating systems.
 
 ### Contract digests
 

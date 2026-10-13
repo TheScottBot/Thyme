@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
-	"math/bits"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -60,6 +59,8 @@ type shell struct {
 	lastWindowText        string
 
 	updateLayeredWindowFailures int
+	renderFailures              int
+	rejectedDpiChanges          int
 	settingsSaveFailures        int
 	tickPostFailures            atomic.Int64
 }
@@ -234,7 +235,7 @@ func (shell *shell) stop() {
 func (shell *shell) postTick() {
 	if postError := postMessage(shell.window, tickMessage); postError != nil {
 		failureCount := shell.tickPostFailures.Add(1)
-		if isWorthLogging(int(failureCount)) {
+		if eventlog.IsWorthLogging(int(failureCount)) {
 			shell.logger.Warn("tick could not be posted", "reason", eventlog.ReasonWithoutPath(postError), "count", failureCount)
 		}
 	}
@@ -244,12 +245,6 @@ func (shell *shell) postTick() {
 // a fixed period, so drift cannot accumulate (specification 2.2).
 func (shell *shell) aimTimer() {
 	shell.tickTimer.Reset(clockmodel.NextWake(time.Now(), shell.current.ShowSeconds))
-}
-
-// isWorthLogging logs the first of a repeating fault and then each time its
-// count doubles, so a fault every tick is visible without flooding the log.
-func isWorthLogging(count int) bool {
-	return count > 0 && bits.OnesCount(uint(count)) == 1
 }
 
 func (shell *shell) pixelScale() float64 {
@@ -270,7 +265,10 @@ func (shell *shell) redraw(moveTo *win32Point) {
 	snapshot := clockmodel.TakeSnapshot(time.Now(), time.Local, shell.zones, shell.current.ShowSeconds)
 	frame, renderError := shell.renderer.Render(renderTextFrom(snapshot), shell.pixelScale())
 	if renderError != nil {
-		shell.logger.Error("render failed", "reason", eventlog.ReasonWithoutPath(renderError))
+		shell.renderFailures++
+		if eventlog.IsWorthLogging(shell.renderFailures) {
+			shell.logger.Error("render failed", "reason", eventlog.ReasonWithoutPath(renderError), "count", shell.renderFailures)
+		}
 		return
 	}
 	if shell.bitmap == nil || shell.bitmap.width != frame.Width || shell.bitmap.height != frame.Height {
@@ -291,7 +289,7 @@ func (shell *shell) redraw(moveTo *win32Point) {
 	}
 	if updateError := updateLayeredWindow(shell.window, shell.bitmap, moveTo); updateError != nil {
 		shell.updateLayeredWindowFailures++
-		if isWorthLogging(shell.updateLayeredWindowFailures) {
+		if eventlog.IsWorthLogging(shell.updateLayeredWindowFailures) {
 			shell.logger.Warn("UpdateLayeredWindow failed", "reason", eventlog.ReasonWithoutPath(updateError), "count", shell.updateLayeredWindowFailures)
 		}
 	}
@@ -415,8 +413,19 @@ func (shell *shell) handleMessage(message uint32, wParam uintptr, lParam uintptr
 
 	case wmDpiChanged:
 		// The new DPI is in the low word of wParam. Windows suggests where the
-		// window should go; Thyme takes the position and sizes itself.
-		shell.dpi = int(wParam & 0xFFFF)
+		// window should go; Thyme takes the position and sizes itself. Any
+		// program running as the same user can send this message, so a DPI
+		// the renderer cannot draw at is refused and the last good one kept,
+		// rather than leaving the widget frozen on failed renders.
+		reportedDpi := int(wParam & 0xFFFF)
+		if !render.IsRenderableScale(placement.PixelScale(shell.current.ScalePercent, reportedDpi)) {
+			shell.rejectedDpiChanges++
+			if eventlog.IsWorthLogging(shell.rejectedDpiChanges) {
+				shell.logger.Warn("dpi change refused: the widget cannot be drawn at that scale", "dpi", reportedDpi, "count", shell.rejectedDpiChanges)
+			}
+			return 0
+		}
+		shell.dpi = reportedDpi
 		suggested := rectangleFromLParam(lParam)
 		shell.redraw(&win32Point{X: suggested.Left, Y: suggested.Top})
 		returnMemoryToWindows()

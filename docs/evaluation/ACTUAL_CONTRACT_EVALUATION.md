@@ -1153,3 +1153,69 @@ release builds and size check in README.md.
 | Race detector | not run here (windows/arm64); runs in CI on amd64 |
 | Tests skipped | none |
 | Author gate | WE8 idle working set after ten minutes on both architectures: outstanding |
+
+(13 October 2026: the author reported the arm64 working set as 22.44 MB and
+pushed bc2da27, carrying WE7 and WE8. CI run 38466734443 passed on all three
+runners, including the release builds and size check. The amd64 measurement
+is owed, planned for 14 October 2026.)
+
+## Security pass, 13 October 2026
+
+Asked for by the author before the 1.0.0 tag. Trust boundary: Thyme runs as
+the signed in user with no elevation and no network; its only input from
+outside its own code is the user's settings file. Anything able to attack it
+from the same account can already do whatever Thyme can, so most findings
+are robustness, not a crossed boundary.
+
+### Checked, with evidence
+
+- Known vulnerabilities: govulncheck v1.9.0, run for real on the windows and
+  linux builds: none found.
+- Network: `go list -deps` of the windows build links `net` and `net/netip`
+  only because golang.org/x/sys/windows imports `net` for socket types; no
+  Thyme package calls a network function (searched `internal`, `cmd`,
+  `tools`).
+- DLL loading: every Win32 DLL is loaded with `windows.NewLazySystemDLL`,
+  which sets `LOAD_LIBRARY_SEARCH_SYSTEM32` (read in x/sys v0.49.0
+  `dll_windows.go`), so a planted DLL beside the exe is not loaded.
+- Forged window messages carrying a pointer, run for real against a local
+  Thyme: `PostMessageW` of a `WM_DPICHANGED` with a bad pointer was refused by
+  Windows ("The message can be used only with synchronous operations"); a
+  cross process `SendMessageTimeoutW` of the same was not delivered; Thyme kept
+  running. A well formed one, with a valid rectangle in the sender, was
+  delivered: Windows copies it across, so the DPI it carries is input from
+  any same user program.
+- Settings, registry, logs, unsafe, supply chain and CI permissions: as
+  recorded in WE3, WE6, WE5 and WE1; nothing new found.
+
+### Findings fixed, each test first
+
+1. The DPI in `WM_DPICHANGED` was trusted. A same user program could send a
+   valid rectangle with a DPI the renderer refuses, leaving every later tick
+   failing until a real DPI change. Now `render.IsRenderableScale`, the one
+   place the bound is checked and used by `Render` itself, is asked first; a
+   refused DPI keeps the last good one and is logged. Seen live: DPI 4000 sent
+   cross process was refused, logged once, and Thyme kept running.
+2. A render failure was logged every tick. It now follows the same rule as
+   the other repeating faults, moved to `eventlog.IsWorthLogging` with a test:
+   the first, then each doubling.
+3. No vulnerability scan in CI. govulncheck v1.9.0 now runs on every runner
+   for both operating systems, installed for the host as staticcheck is. Seen
+   failing first on a throwaway copy of the tree with `gopkg.in/yaml.v2`
+   v2.2.7 and a call to `yaml.Unmarshal` planted in it: it reported
+   GO-2020-0036 and exited non zero. The copy was deleted.
+
+### Findings not fixed, for the author
+
+- The exe is unsigned (excluded by the specification) and no checksum is
+  published, so a downloaded copy cannot be verified, and Start with Windows
+  runs whatever sits at the recorded path. Publishing a SHA-256 beside each
+  release is a release step for the author.
+- Found while fixing 1: the renderer's `MaximumPixelScale` of 8 is 200 percent
+  at 384 DPI. A display scaled above 400 percent with the 200 percent step
+  would be refused, and now keeps its last good DPI rather than freezing.
+  Microsoft Learn's High DPI page (read 13 October 2026) states no maximum
+  display scale, so the bound was not raised on a guess.
+- Same user programs can open the menu, tick the clock, close the widget or
+  take the single instance name first so Thyme exits quietly. Inherent to a
+  desktop window at the same integrity level; accepted, not changed.

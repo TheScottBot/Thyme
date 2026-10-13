@@ -112,7 +112,7 @@ func NewRenderer() (*Renderer, error) {
 }
 
 func validateRequest(text Text, pixelScale float64) error {
-	if math.IsNaN(pixelScale) || pixelScale <= 0 || pixelScale > MaximumPixelScale {
+	if !IsRenderableScale(pixelScale) {
 		return fmt.Errorf("pixel scale %v is outside (0, %v]", pixelScale, MaximumPixelScale)
 	}
 	if len(text.Zones) > theme.ZoneRowCapacity {

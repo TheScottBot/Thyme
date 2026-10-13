@@ -63,6 +63,20 @@ jobs:
           GOOS=windows "$staticcheck_binary" -checks all ./...
           GOOS=linux "$staticcheck_binary" -checks all ./...
 
+      # Known vulnerabilities in the toolchain or any dependency, for both
+      # operating systems, since each only sees its own GOOS's files. A new
+      # advisory fails the build even when no code changed. Seen failing on a
+      # planted vulnerable dependency before being trusted (security pass,
+      # 13 October 2026).
+      # Installed for the host first, as staticcheck is, because go run with
+      # GOOS set would cross compile the tool itself.
+      - name: govulncheck
+        run: |
+          go install golang.org/x/vuln/cmd/govulncheck@v1.9.0
+          govulncheck_binary="$(go env GOPATH)/bin/govulncheck"
+          GOOS=windows "$govulncheck_binary" ./...
+          GOOS=linux "$govulncheck_binary" ./...
+
       # The import boundary check and the prose and typography scan. Their
       # tests in internal/repocheck prove them against planted violations on
       # every run.

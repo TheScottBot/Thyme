@@ -1,5 +1,7 @@
 package render
 
+import "image"
+
 // ZoneLine is one world clock row: its label, part of the static layer, and
 // its HH:MM, redrawn every tick.
 type ZoneLine struct {
@@ -24,4 +26,8 @@ type Frame struct {
 	Width  int
 	Height int
 	Pixels []byte
+
+	// PanelBounds is the visible panel, outline included, within the frame.
+	// The rest is the glow's transparent margin, which may hang off screen.
+	PanelBounds image.Rectangle
 }

@@ -4,8 +4,9 @@ A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
-Status: WE4. The clock model, settings and renderer exist as tested packages;
-there is no window yet.
+Status: WE5. The widget runs and can be dragged. The menu, tray icon, Start
+with Windows and Show Desktop handling arrive in WE6; until then, end it from
+Task Manager. Requires Windows 10 version 1703 or later.
 
 ## Building
 
@@ -24,6 +25,13 @@ The Windows executable, built from any host:
 
 ```bash
 CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsgui" -o thyme.exe ./cmd/thyme
+```
+
+The same from PowerShell, where variables are set before the command rather
+than in front of it (use `amd64` for an x64 machine):
+
+```powershell
+$env:CGO_ENABLED = "0"; $env:GOOS = "windows"; $env:GOARCH = "arm64"; go build -trimpath -ldflags "-H windowsgui" -o thyme.exe ./cmd/thyme
 ```
 
 TESTING.md lists every suite and check, and where each runs.
@@ -53,6 +61,11 @@ a running Thyme does not watch the file.
 
 Those are also the defaults.
 
+Thyme also writes a log, `%LOCALAPPDATA%\Thyme\thyme.log`, capped at 1 MiB
+with one previous file kept as `thyme.log.1`. It records start up, rejected
+settings by field and reason, and faults; never the settings file's contents
+or any path beyond the folder name.
+
 | Field | Meaning | Accepted values |
 |---|---|---|
 | `version` | the settings format | `1` only |
@@ -71,6 +84,14 @@ or one without `"version": 1` is ignored whole: the defaults are used and Thyme
 does not save over it, so nothing it could not understand is destroyed. An
 unknown time zone name is not a settings error: it is reported, naming the
 label, when the zone is loaded.
+
+## Known limitations
+
+- A change of Windows' time zone while Thyme runs (for example a laptop with
+  automatic time zone crossing a border) is not followed by the local time
+  until Thyme restarts; the world clocks are unaffected, and the log records
+  the change. Go reads the local zone once per process.
+- English only (WD7).
 
 ## Layout
 

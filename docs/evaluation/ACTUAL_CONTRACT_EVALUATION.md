@@ -762,3 +762,121 @@ GOOS=windows GOARCH=amd64 go test -c -o render_amd64.test.exe ./internal/render
 | Cross builds | succeed |
 | Tests skipped | none |
 | Author gate | WE4 theme acceptance: outstanding |
+
+(13 October 2026, later the same day: the author cleared the WE4 gate in the
+words "theme accepted" and pushed f9285fd. CI run 38459192154 passed on all
+three runners, so the golden image tolerance of 2 holds on real amd64 hardware
+as well as under emulation.)
+
+## WE5 Plan, 13 October 2026
+
+### Minimum Windows release, read from Microsoft Learn
+
+Read 13 October 2026. The SDK header only guards these with
+`WINVER >= 0x0605`, which names no release, so the documentation was read.
+
+| API or value | Minimum client |
+|---|---|
+| `SetProcessDpiAwarenessContext` | Windows 10, version 1703 |
+| `DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2` | Windows 10, version 1703 (the Creators Update) |
+| `GetDpiForWindow` | Windows 10, version 1607 |
+
+Thyme therefore supports Windows 10 version 1703 and later, and Windows 11.
+The same page recommends a manifest over the API call; see
+IMPLEMENTATION_DEVIATIONS.md.
+
+### Struct layouts and signatures, read from the SDK headers
+
+10.0.26100.0, `um/WinUser.h`, `um/wingdi.h`, `shared/windef.h`, read 13
+October 2026: `MSG`, `WNDCLASSEXW`, `MONITORINFO`, `BITMAPINFOHEADER`,
+`BITMAPINFO`, `BLENDFUNCTION`, `POINT`, `SIZE`, `RECT`, and the signatures of
+`UpdateLayeredWindow`, `EnumDisplayMonitors` and its `MONITORENUMPROC`,
+`GetMonitorInfoW`, `SetWindowPos`, `CreateWindowExW`, `PostMessageW`,
+`GetMessageW`, `GetWindowRect`, `CreateDIBSection` and `CreateMutexW`. The 64
+bit sizes they imply (48, 80, 40, 40, 44, 4, 8, 8 and 16 bytes) are asserted by
+`TestWin32Structs_MatchTheSdkSizes`. `EnumDisplayMonitors` joins the WE1
+reachability list: the shell gathers every work area so that placement, not
+Windows, decides which monitor is nearest.
+
+### Experiment: posted messages under TrackPopupMenu
+
+Run for real, 13 October 2026, both architectures (amd64 under emulation). A
+throwaway program posted a private message from a goroutine every 50 ms while
+its GUI thread sat in `TrackPopupMenu`; the menu was closed by a further posted
+message whose handler called `EndMenu`, with a cross thread `SendMessage` of
+`WM_CANCELMODE` as a fallback.
+
+| Build | Menu open | Ticks dispatched while open | Ticks outside | Closed by |
+|---|---|---|---|---|
+| arm64 | 1.434 s | 30 | 6 | the posted message |
+| amd64 | 1.416 s | 30 | 6 | the posted message |
+
+Conclusion accepted: posted messages are dispatched by the menu's modal loop,
+so the posted tick keeps the clock moving under the menu and no separate menu
+tick is needed. The same program ran the Go runtime beside a GUI thread locked
+with `runtime.LockOSThread` with no conflict, which answers the second WE5
+assumption for this design.
+
+### time.Local and a change of time zone, read from source
+
+go1.27.2 `src/time/zoneinfo.go` and `zoneinfo_windows.go`: `time.Local` is
+initialised once, behind a `sync.Once`, from `GetTimeZoneInformation`. A
+change of wall clock is seen, because every tick reads the time afresh; a
+change of time zone while Thyme runs is not seen until it restarts. Raised to
+the author as a question in the WE5 report.
+
+## WE5 Execute, 13 October 2026
+
+### Findings
+
+- Smoke run by the agent on this machine (Windows 11 26200, arm64, 144 DPI):
+  the widget started and logged its start line with `"dpi":144` and
+  `"settingsSource":"defaults"`; a second launch exited with code 0 and logged
+  that it did; the process used 0 ms of processor time over 10 seconds as
+  Windows reports it, which is below that counter's granularity and is not the
+  measurement the gate needs; working set 25.3 MB. The agent cannot see the
+  screen, so whether it drew, dragged or ticked correctly was not observed.
+- The working set of 25.3 MB is above WU7's 15 MB estimate. WE8 owns the
+  measurement and the budget; recorded here for it.
+- Error text from Go's file operations carries the full path, which under the
+  user's profile includes their name, and Part 5 forbids logging paths beyond
+  the folder name. A failed settings save would have logged one.
+  `eventlog.ReasonWithoutPath` now strips paths from every logged reason, with
+  tests seen failing first.
+- Exiting needs the WE6 menu. Until then the widget is ended from Task Manager.
+- Owned by WE6: `DestroyWindow` was bound and then removed as unused; it
+  returns with Exit.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64, 144 DPI. Toolchain go1.27.2.
+staticcheck 2026.2.2 (0.8.2). Commands are those of the WE1 report, plus:
+
+```bash
+go test -count=1 -v ./internal/placement/ ./internal/eventlog/ ./internal/desktop/
+```
+
+```bash
+CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsgui" -o thyme.exe ./cmd/thyme
+```
+
+| Item | Result |
+|---|---|
+| Focused tests: placement, eventlog, desktop | pass; each seen failing against stubs or undefined types first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean; `unsafe` and x/sys appear only in `internal/desktop` |
+| Exe size, `-trimpath -H windowsgui`, not stripped | amd64 6,125,056 bytes; arm64 5,720,064 bytes |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Tests skipped | none |
+| Author gate | WE5: outstanding |
+
+(13 October 2026, the same day: the author chose option (a) for a change of
+time zone while running: a known limitation in README.md, with the change
+logged once when Windows reports it, and option (c), following the zone live
+from Windows' own rules, recorded for later. The shell compares Windows' time
+zone information at WM_TIMECHANGE with what it read at start. This comparison
+has no automated test, being one equality on a Win32 struct inside the shell;
+it is checked by the WE5 gate only if the author changes the time zone while
+Thyme runs, which the gate does not ask for. The author also approved
+`internal/eventlog`.)

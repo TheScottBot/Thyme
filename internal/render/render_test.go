@@ -243,3 +243,23 @@ func computeLayoutForTest(t *testing.T, text Text, pixelScale float64) frameLayo
 	}
 	return layout
 }
+
+// The shell clamps the visible panel, not the transparent canvas, so the
+// frame says where the panel is. Every opaque pixel lies inside those bounds.
+func TestRender_FrameReportsTheVisiblePanelBounds(t *testing.T) {
+	for _, pixelScale := range []float64{0.75, 1, 2} {
+		frame := renderOrFail(t, newRendererOrFail(t), mockUpText(), pixelScale)
+		bounds := frame.PanelBounds
+
+		if bounds.Empty() || bounds.Min.X <= 0 || bounds.Min.Y <= 0 || bounds.Max.X >= frame.Width || bounds.Max.Y >= frame.Height {
+			t.Fatalf("scale %v: expected bounds inside the canvas, got %v in %dx%d", pixelScale, bounds, frame.Width, frame.Height)
+		}
+		for y := 0; y < frame.Height; y++ {
+			for x := 0; x < frame.Width; x++ {
+				if alphaAt(frame, x, y) == 255 && !(x >= bounds.Min.X && x < bounds.Max.X && y >= bounds.Min.Y && y < bounds.Max.Y) {
+					t.Fatalf("scale %v: opaque pixel (%d, %d) outside the reported bounds %v", pixelScale, x, y, bounds)
+				}
+			}
+		}
+	}
+}

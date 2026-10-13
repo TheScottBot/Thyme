@@ -31,5 +31,11 @@ tag, and which author gates were cleared at which commit.
   draws the glow, panel, outline, divider and text into premultiplied BGRA with
   a cached static layer and no allocation per tick. JetBrains Mono Regular
   v2.304 is vendored and embedded (PROVENANCE.md).
+- **WE5 window.** A layered, non activating tool window drawn with
+  UpdateLayeredWindow, dragged anywhere, clamped onto the nearest monitor's
+  work area, saved on each move, rescaled on DPI change, and ticked by a timer
+  re aimed from the wall clock after every tick. Single instance by mutex. A
+  capped JSON lines log beside the settings. Requires Windows 10 version 1703
+  or later.
 
 No contract digest applies: Thyme implements no shared contract.

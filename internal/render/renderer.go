@@ -150,7 +150,12 @@ func (renderer *Renderer) Render(text Text, pixelScale float64) (Frame, error) {
 	if convertError := ConvertRGBAToBGRA(renderer.outputPixels, renderer.workingFrame); convertError != nil {
 		return Frame{}, convertError
 	}
-	return Frame{Width: renderer.layout.canvasWidth, Height: renderer.layout.canvasHeight, Pixels: renderer.outputPixels}, nil
+	return Frame{
+		Width:       renderer.layout.canvasWidth,
+		Height:      renderer.layout.canvasHeight,
+		Pixels:      renderer.outputPixels,
+		PanelBounds: renderer.layout.visiblePanelBounds(),
+	}, nil
 }
 
 func (renderer *Renderer) drawString(face font.Face, colour *image.Uniform, origin floatPoint, value string) {

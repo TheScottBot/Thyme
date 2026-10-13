@@ -81,3 +81,30 @@ covering test.
   October 2026.
 - Covering test: `TestRelativeFilePath_IsDerivedFromTheProductName`; the
   import boundary check covers the new package like every other.
+
+## An event log package beside those of Part 2
+
+- Rule: the specification's Part 2 table lists the packages; Part 5 asks for a
+  size capped JSON lines log beside the settings file, one previous file kept.
+- Instead: `internal/eventlog` holds the rotating file, the log's path and the
+  helper that strips paths from errors. Standard library only.
+- Why: the rotation rules and the path stripping are decisions with tests, and
+  datum Part 3 keeps such decisions out of the shell, where nothing can test
+  them. No existing package owns logging.
+- Author's decision: proposed by the agent and accepted by the author, 13
+  October 2026.
+- Covering tests: `internal/eventlog`.
+
+## DPI awareness set by API call, not by manifest
+
+- Rule: Microsoft Learn (SetProcessDpiAwarenessContext, read 13 October 2026)
+  recommends setting a process's DPI awareness in its manifest.
+- Instead: Thyme calls `SetProcessDpiAwarenessContext` with Per Monitor v2 as
+  its first act, as the specification's Part 1 and WE5 describe.
+- Why: the specification asks for it at start up, and a manifest needs a
+  resource compiled into the exe, which the project otherwise avoids. The call
+  is made before any window exists, which is the documented condition for it
+  to work. A failure is logged at start.
+- Author's decision: follows the specification; recorded for review.
+- Covering test: none automated; the WE5 author gate checks crisp rendering
+  across monitors of different scaling.

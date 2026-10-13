@@ -49,6 +49,9 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `internal/theme` | WCAG 2.x AA contrast of every text colour against the panel, computed from the constants; the normal text ratio at every scale; an opaque palette; the glow reach equals what the box passes spread |
 | `internal/render` | golden images (the mock-up at 100 and 200 percent; zero, one and four zones with seconds on and off); every pixel inside the panel opaque; every pixel beyond the glow transparent; the glow fringe clickable; BGRA conversion; layout widths; static layer caching; the steady state allocation bound |
 | `third_party/jetbrainsmono` | the vendored files and the embedded font match SHA256SUMS |
+| `internal/placement` | each edge, a corner, larger than the work area (top left wins), the visible panel clamped rather than the transparent margin, the largest overlap or else the nearest monitor, a vanished monitor, pixel scale for every step at 96, 120, 144 and 192 DPI |
+| `internal/eventlog` | the cap, one previous file kept, appending to and rotating an earlier run's log, an oversized record kept whole, paths stripped from logged errors |
+| `internal/desktop` | Win32 struct sizes against the SDK (Windows runners only); the rest is the WE5 author gate |
 
 ## Golden images
 
@@ -80,4 +83,17 @@ a 412,824 byte frame at 100 percent.
 
 ## Author gates
 
-- WE4: the 100 percent golden image (`internal/render/testdata/golden/mockup_100.png`), viewed beside `docs/theme.png`, is accepted as the theme. Outstanding.
+- WE4: the 100 percent golden image (`internal/render/testdata/golden/mockup_100.png`), viewed beside `docs/theme.png`, is accepted as the theme. Cleared by the author, 13 October 2026, in their words: "theme accepted". Recorded from the conversation; nothing else was written down. The dotted zero, the slightly wider time, the slightly higher date and the missing inner glow were shown to the author before acceptance.
+- WE5, on Windows 11 arm64 and on one amd64 machine, with the exe built as in
+  README.md. Outstanding. Until WE6 adds Exit, end Thyme from Task Manager.
+  1. The widget appears with a transparent surround: only the panel and its
+     glow are visible.
+  2. It drags from anywhere on the panel, including across monitors.
+  3. Ended and started again, it reopens where it was left.
+  4. With its monitor unplugged, it is pulled back onto a remaining one.
+  5. Moved between monitors of different scaling, it redraws crisply at the
+     new size.
+  6. Over two minutes of watching, the seconds never visibly skip or repeat.
+  7. Idle processor use in Task Manager is zero with seconds off (set
+     `"showSeconds": false` in the settings file and restart) and negligible
+     with them on.

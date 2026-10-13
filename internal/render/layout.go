@@ -1,6 +1,7 @@
 package render
 
 import (
+	"image"
 	"math"
 	"unicode/utf8"
 
@@ -132,4 +133,14 @@ func (layout frameLayout) isInsidePanelBy(x float64, y float64, inset float64) b
 
 func (layout frameLayout) distanceOutsidePanel(x float64, y float64) float64 {
 	return math.Max(layout.signedDistanceToPanel(x, y), 0)
+}
+
+// visiblePanelBounds rounds the panel, grown by half the outline and one pixel
+// of anti aliasing, out to whole pixels.
+func (layout frameLayout) visiblePanelBounds() image.Rectangle {
+	grow := theme.OutlineWidth*layout.pixelScale/2 + 1
+	return image.Rect(
+		int(math.Floor(layout.panel.Min.X-grow)), int(math.Floor(layout.panel.Min.Y-grow)),
+		int(math.Ceil(layout.panel.Max.X+grow)), int(math.Ceil(layout.panel.Max.Y+grow)),
+	)
 }

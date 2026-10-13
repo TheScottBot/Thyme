@@ -355,3 +355,105 @@ CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsg
 Outstanding before WE1 is done: the author's reproduction on a clean machine,
 and the CI workflow seen green on all three runners, which needs the repository
 initialised and pushed by the author (datum 0.1). No author gate belongs to WE1.
+
+## WE2 Plan, 13 October 2026
+
+### Decision taken by the author
+
+| Id | Decision | Recorded |
+|---|---|---|
+| WD8 | Seconds are a menu toggle, on by default. Off renders HH:MM and wakes once a minute. | 13 October 2026 |
+
+### The mock-up as a file
+
+The author placed the mock-up at `docs/theme.png` (1,550,257 bytes), the same
+image received in the conversation. Its pixels are sampled in WE4.
+
+### Zone loading, read from source
+
+Go 1.27.2, `src/time/zoneinfo.go` and `src/time/zoneinfo_read.go`, read 13
+October 2026. `LoadLocation` returns UTC for the empty name and for `UTC`, and
+the host's zone for `Local`, before any lookup. Otherwise it tries `$ZONEINFO`,
+then the platform sources (none on Windows: `zoneinfo_windows.go` declares
+`platformZoneSources` empty), then the embedded tzdata if `time/tzdata` is
+linked, then `runtime.GOROOT()/lib/time/zoneinfo.zip`. `runtime.GOROOT()` reads
+the `GOROOT` environment variable first.
+
+Consequences accepted:
+
+- The empty name and `Local` are rejected by clockmodel before
+  `LoadLocation` is called, because both would otherwise be the silent fallback
+  the specification forbids. `UTC` is a real IANA name and stays.
+- A nil `*time.Location` prints as `UTC`, so a caller that ignored a load error
+  would display UTC silently. Load errors are returned, never swallowed.
+
+The embedded tzdata in go1.27.2 is release 2026c (`lib/time/update.bash`,
+`CODE=2026c`, `DATA=2026c`).
+
+### Experiment: time/tzdata on Windows
+
+Run for real, 13 October 2026, this machine, go1.27.2. Two throwaway programs
+loading UTC, Europe/London, Europe/Berlin and America/Sao_Paulo, one importing
+`time/tzdata` and one not, built `CGO_ENABLED=0 -trimpath -ldflags "-s -w"` for
+windows/amd64 and windows/arm64, run with `GOROOT` and `ZONEINFO` unset so the
+installed Go's zoneinfo.zip could not mask the result (`runtime.GOROOT()`
+printed empty). The amd64 builds ran under the machine's x64 emulation.
+
+| Build | UTC | London, Berlin, Sao Paulo | Exe size amd64 | Exe size arm64 |
+|---|---|---|---|---|
+| without `time/tzdata` | loads | `unknown time zone` | 1,731,584 | 1,635,328 |
+| with `time/tzdata` | loads | load | 2,142,720 | 2,046,976 |
+
+Embedding costs 411,136 bytes on amd64 and 411,648 bytes on arm64. Assumption
+verified: zone loading on a machine without Go installed depends on
+`time/tzdata`. A stock machine was approximated by unsetting the variables, not
+by a second machine; this is recorded as the limit of the experiment.
+
+The four mock-up zones map to UTC, Europe/London, Europe/Berlin and
+America/Sao_Paulo; each name loads from the embedded 2026c data. That the labels
+UTC, LDN, BER and SAO mean those zones is the specification's reading of the
+mock-up, and the WE2 test of the mock-up instant checks the offsets agree with
+the times it shows.
+
+## WE2 Execute, 13 October 2026
+
+### Findings
+
+- The daylight saving cases were written out by hand before the code existed
+  (London and Berlin on 29 March and 25 October 2026, Sao Paulo's last summer
+  time start on 4 November 2018) and pass against the embedded 2026c data.
+- A test claiming to prove minute boundaries follow a half hour zone's wall
+  clock was written and then removed before implementation, because a whole
+  minute offset cannot tell a wall clock implementation from a UTC aligned one.
+  No real zone today has an offset with seconds in it, so the property is
+  untestable with current data, and the implementation reads the wall clock
+  anyway.
+- The compiled clockmodel tests were also run with `GOROOT` and `ZONEINFO`
+  unset and passed, so the package's own `time/tzdata` import is what loads the
+  zones, not the Go installation.
+- Owned by WE3, recorded for it: the four mock-up zones are currently written
+  as a test fixture in `internal/clockmodel/fixture_test.go`. WE3's defaults
+  become their single home, and the fixture should then read them from there.
+
+### Reproduction report
+
+Platform: Windows 11 Home 10.0.26200, arm64. Toolchain go1.27.2. staticcheck
+2026.2.2 (0.8.2). Commands are those of the WE1 report, unchanged, plus:
+
+```bash
+go test -count=1 -v ./internal/clockmodel/
+```
+
+| Item | Result |
+|---|---|
+| Focused tests, `internal/clockmodel` | pass, 29 tests and subtests; each seen failing on an assertion against stubs first |
+| Full suite | pass |
+| gofmt, vet, staticcheck for windows and linux | clean, 0 warnings |
+| repocheck | clean |
+| Race detector | not run here (windows/arm64); runs in CI on amd64 |
+| Cross builds, windows/amd64 and windows/arm64 | succeed |
+| Tests skipped | none |
+| Tests requiring the author | none; WE2 has no author gate |
+
+Outstanding: the author's reproduction, and the suites seen green on the CI
+runners, which have not yet run because the repository has not been pushed.

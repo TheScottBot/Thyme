@@ -16,5 +16,9 @@ tag, and which author gates were cleared at which commit.
   gofmt, vet and staticcheck for both operating systems, the tree wide checks,
   tests (with the race detector where the toolchain has one), and windows/amd64
   and windows/arm64 cross builds.
+- **WE2 clock model.** Zones load from embedded tzdata and fail loudly, naming
+  the label, for an unknown, empty or host dependent name. Snapshot gives the
+  time (with or without seconds), the lower case date line and each zone's
+  HH:MM. NextWake aims at the next whole second or minute plus a 20 ms margin.
 
 No contract digest applies: Thyme implements no shared contract.

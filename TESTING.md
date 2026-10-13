@@ -38,10 +38,17 @@ dash, an en dash and a double hyphen run in a Go comment) were also planted in
 the real tree on 13 October 2026 and seen to fail before being removed; the
 record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 
+## Suites by package
+
+| Package | What its tests pin down |
+|---|---|
+| `internal/repocheck` | both tree wide checks against planted violations |
+| `internal/clockmodel` | the mock-up instant, daylight saving transitions in every mock-up zone, the date line, next wake at .000, .999 and .980 seconds in both modes, and zone load failures by reason |
+
 ## Testing deviations
 
 - No race detector on windows/arm64. See IMPLEMENTATION_DEVIATIONS.md.
 
 ## Author gates
 
-None in WE1.
+None in WE1 or WE2.

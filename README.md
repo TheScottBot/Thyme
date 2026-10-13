@@ -19,6 +19,32 @@ Its tick shows what will really happen: if you disable Thyme in Task
 Manager's Startup apps, the tick goes off, and ticking it again re-enables it
 there too.
 
+## Installing from source
+
+There is no installer. With Go and a clone of this repository, build the exe
+into a folder of your own, from the repository root in PowerShell, then start
+it:
+
+```powershell
+go build -trimpath -ldflags "-H windowsgui -s -w" -o $env:LOCALAPPDATA\Thyme\thyme.exe ./cmd/thyme
+```
+
+```powershell
+& $env:LOCALAPPDATA\Thyme\thyme.exe
+```
+
+No settings are needed; the first run uses the defaults below and writes
+`settings.json` the first time something changes. To update, end Thyme from
+its menu (Exit), pull, and build again.
+
+Do not use `go run` for everyday use. It builds the exe in a temporary folder
+and deletes it when Thyme exits, so Start with Windows would record a path
+that no longer exists, and a sign in program pointing at a deleted file in a
+temporary folder is a security weakness in its own right.
+
+To build exactly a released version, check out its tag first, for example
+`git checkout v1.0.0`; `go.sum` pins every dependency by checksum.
+
 ## Building
 
 From the repository root, with Go 1.27.2 (go.mod pins it, and a newer local
@@ -144,7 +170,9 @@ label, when the zone is loaded.
 | `cmd/thyme` | the entry point, wiring only |
 | `internal/product` | the product name, once |
 | `third_party/jetbrainsmono` | the vendored font, its licence and digests, and the package that embeds it |
-| `internal/repocheck`, `tools/repocheck` | the import boundary check and the prose scan |
+| `internal/eventlog` | the capped log file, and path free error reasons |
+| `internal/repocheck`, `tools/repocheck` | the import boundary check, the network import check and the prose scan |
+| `tools/sizecheck` | the release exe size budget |
 
 ## Where it came from
 

@@ -21,13 +21,14 @@ WE5).
 | 13 October 2026 | author | not recorded | WE6 build | WE6 gate | cleared, in the author's words "WE6 gate passed" |
 | 13 October 2026 | author | not recorded | WE7 build | WE7 gate | cleared, in the author's words "WE7 gate passed" |
 | 13 October 2026 | author, reported in the conversation | the author's Windows arm64 machine, not otherwise named | 1.0.0 release build, arm64 | `(Get-Process thyme).WorkingSet64 / 1MB` | 22.44140625 MB; whether ten minutes had passed and seconds were on was not stated |
+| 14 October 2026 | author, reported in the conversation | the author's Windows amd64 machine, not otherwise named | release build, amd64 | ran "all day" in the author's words, then `(Get-Process thyme).WorkingSet64 / 1MB` and its total processor time | 22.65234375 MB working set; 118,453 ms of processor time over the day; the hours running, the build's commit and whether seconds were on were not stated |
 
 ## Measurements owed
 
 | Measurement | Budget | Status |
 |---|---|---|
 | Working set after ten minutes idle, windows/arm64, release build | 30 MB (WU7, decided by the author in WE8) | reported by the author, 22.4 MB; within budget |
-| Working set after ten minutes idle, windows/amd64, release build | 30 MB | owed by the author; no amd64 machine was to hand on 13 October 2026, planned for 14 October 2026 |
+| Working set after ten minutes idle, windows/amd64, release build | 30 MB | reported by the author, 22.7 MB after running all day; within budget |
 
 ## Reference points
 

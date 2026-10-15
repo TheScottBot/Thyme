@@ -142,3 +142,6 @@ a 412,824 byte frame at 100 percent.
   working set with `(Get-Process thyme).WorkingSet64 / 1MB` in PowerShell
   (Task Manager's default Memory column is the private working set, a
   different figure). Add the two results to HARDWARE_COMPATIBILITY.md against the 30 MB budget.
+  Status, 14 October 2026: both measurements reported by the author and
+  within budget (arm64 22.4 MB; amd64 22.7 MB after running all day).
+  Awaiting the author's clearance in their own words.

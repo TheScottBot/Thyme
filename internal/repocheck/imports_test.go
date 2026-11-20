@@ -34,6 +34,7 @@ func TestFindForbiddenImports_FlagsEveryForbiddenImportInPurePackages(t *testing
 		{name: "unsafe is confined to the shell", importPath: "unsafe"},
 		{name: "the x/sys root is forbidden", importPath: "golang.org/x/sys"},
 		{name: "any x/sys subpackage is forbidden", importPath: "golang.org/x/sys/unix"},
+		{name: "cgo is confined to the shell", importPath: "C"},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {

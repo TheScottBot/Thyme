@@ -37,7 +37,7 @@ func TestIsInsideFolder_RecognisesAnExeUnderTheTemporaryFolder(t *testing.T) {
 
 // Start with Windows cannot be turned on from a temporary exe, but an entry
 // that already exists can still be turned off, so the guard never traps one.
-func TestBuildMenu_StartWithWindowsFromATemporaryExe(t *testing.T) {
+func TestBuildMenu_StartAtLoginFromATemporaryExe(t *testing.T) {
 	testCases := []struct {
 		name            string
 		alreadyEnabled  bool
@@ -48,9 +48,9 @@ func TestBuildMenu_StartWithWindowsFromATemporaryExe(t *testing.T) {
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
-			entries := BuildMenu(MenuState{Settings: settings.Defaults(), StartWithWindows: testCase.alreadyEnabled, StartWithWindowsFromTemporaryExe: true})
+			entries := BuildMenu(MenuState{Settings: settings.Defaults(), StartAtLogin: testCase.alreadyEnabled, StartAtLoginFromTemporaryExe: true})
 
-			entry := findEntry(t, entries, CommandStartWithWindows)
+			entry := findEntry(t, entries, CommandStartAtLogin)
 			if entry.Enabled != testCase.expectedEnabled || entry.Checked != testCase.alreadyEnabled {
 				t.Errorf("expected enabled %v and checked %v, got %+v", testCase.expectedEnabled, testCase.alreadyEnabled, entry)
 			}

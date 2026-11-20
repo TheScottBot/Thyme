@@ -6,7 +6,28 @@ tag, and which author gates were cleared at which commit.
 
 ## [Unreleased]
 
-Nothing yet.
+### Added
+
+- **macOS.** A native shell for macOS 13 or later on arm64 (WD11), using AppKit
+  through cgo (WD12): `Thyme.app` built by `tools/macbundle`, a menu bar icon,
+  and Open at Login through `SMAppService`. The macOS author gate is not yet
+  cleared.
+- **An app icon** for `Thyme.app`, in the same family as the author's
+  Punchline icon: the panel as a tile with a heavy outline, and a clock face.
+  `render.RenderAppIcon` draws it and `tools/macbundle` makes the icns file with
+  `iconutil`, so Thyme still ships no icon file. New golden images:
+  `appicon_16`, `appicon_32`, `appicon_128` and `appicon_256`.
+- **Tests of the shell's decisions** against a fake platform, on every host.
+- **A macOS CI runner**, and darwin added to vet, staticcheck and govulncheck.
+
+### Changed
+
+- **Shared code:** the portable half of the Windows shell moved into
+  `internal/desktop/core.go` behind a `platform` interface (WD13). Behaviour is
+  meant to be unchanged, except that a failure to create the bitmap is now
+  logged as a throttled warning with other frame failures. The WE5, WE6 and WE7
+  author gates must be run again on Windows before this reaches main.
+- `"C"` is a forbidden import outside the shell.
 
 ## [1.0.0], not yet tagged
 

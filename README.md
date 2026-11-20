@@ -1,11 +1,11 @@
 # Thyme
 
-A very small desktop clock for Windows 10 and 11, written in Go. One theme (neon
+A very small desktop clock for Windows and macOS, written in Go. One theme (neon
 violet on a dark panel): local time with seconds, a date line and up to four
 world clocks, on a borderless window you can drag anywhere.
 
 Version 1.0.0. Runs on Windows 10 version 1703 or later and Windows 11, on
-amd64 and arm64.
+amd64 and arm64, and on macOS 13 or later on Apple silicon.
 
 ## Using it
 
@@ -19,7 +19,36 @@ Its tick shows what will really happen: if you disable Thyme in Task
 Manager's Startup apps, the tick goes off, and ticking it again re-enables it
 there too.
 
+On macOS, right click or Control click the widget, or click its menu bar icon.
+The same menu reads Seconds, Scale, Always on Top, Open at Login, Show in Menu
+Bar, Quit Thyme. Open at Login's tick also shows what will really happen: if you
+turn Thyme off in System Settings, Login Items, the tick goes off.
+
 ## Installing from source
+
+### macOS
+
+With Go, the Xcode Command Line Tools and a clone of this repository, from the
+repository root:
+
+```bash
+MACOSX_DEPLOYMENT_TARGET=13.0 go build -trimpath -ldflags "-s -w" -o thyme ./cmd/thyme
+```
+
+```bash
+go run ./tools/macbundle thyme Thyme.app
+```
+
+```bash
+mv Thyme.app /Applications/ && open /Applications/Thyme.app
+```
+
+The bundle is signed ad hoc, not notarised, so it is for the Macs you build it
+on; it needs no Apple account. Without the bundle, `./thyme` and `go run
+./cmd/thyme` still run, but Open at Login is greyed out, because it registers a
+bundle. To update, choose Quit Thyme, pull and repeat these steps.
+
+### Windows
 
 There is no installer. With Go and a clone of this repository, build the exe
 into a folder of your own, from the repository root in PowerShell, then start
@@ -59,7 +88,8 @@ go test ./...
 go run ./tools/repocheck
 ```
 
-The Windows executable, built from any host:
+The Windows executable, built from any host (the macOS build runs only on a
+Mac, because its shell uses cgo and the macOS SDK):
 
 ```bash
 CGO_ENABLED=0 GOOS=windows GOARCH=arm64 go build -trimpath -ldflags "-H windowsgui" -o thyme.exe ./cmd/thyme
@@ -96,8 +126,9 @@ anywhere you can write to and run it; Start with Windows remembers where.
 
 ## Settings
 
-Thyme keeps its settings in `%LOCALAPPDATA%\Thyme\settings.json`, never beside
-the exe. The file is JSON. A hand edit takes effect the next time Thyme starts;
+Thyme keeps its settings in `%LOCALAPPDATA%\Thyme\settings.json` on Windows and
+`~/Library/Application Support/Thyme/settings.json` on macOS, never beside the
+program. The file is JSON. A hand edit takes effect the next time Thyme starts;
 a running Thyme does not watch the file.
 
 ```json
@@ -119,15 +150,15 @@ a running Thyme does not watch the file.
 
 Those are also the defaults.
 
-Thyme also writes a log, `%LOCALAPPDATA%\Thyme\thyme.log`, capped at 1 MiB
-with one previous file kept as `thyme.log.1`. It records start up, rejected
+Thyme also writes a log, `thyme.log` in the same folder, capped at 1 MiB with
+one previous file kept as `thyme.log.1`. It records start up, rejected
 settings by field and reason, and faults; never the settings file's contents
 or any path beyond the folder name.
 
 | Field | Meaning | Accepted values |
 |---|---|---|
 | `version` | the settings format | `1` only |
-| `position` | top left corner, physical pixels of the virtual screen | whole numbers `x` and `y`, negative allowed; Thyme pulls the widget back on screen |
+| `position` | top left corner: physical pixels of the virtual screen on Windows, points from the top left of the main display on macOS | whole numbers `x` and `y`, negative allowed; Thyme pulls the widget back on screen |
 | `scalePercent` | size relative to the design size | `75`, `100`, `125`, `150` or `200` |
 | `alwaysOnTop` | keep above other windows | `true` or `false` |
 | `showInTray` | show the tray icon, the keyboard's way to the menu | `true` or `false` |
@@ -145,8 +176,8 @@ label, when the zone is loaded.
 
 ## Known limitations
 
-- A change of Windows' time zone while Thyme runs (for example a laptop with
-  automatic time zone crossing a border) is not followed by the local time
+- A change of the system's time zone while Thyme runs (for example a laptop
+  with automatic time zone crossing a border) is not followed by the local time
   until Thyme restarts; the world clocks are unaffected, and the log records
   the change. Go reads the local zone once per process.
 - English only (WD7).
@@ -154,6 +185,9 @@ label, when the zone is loaded.
   Thyme's reading of it rests on observation (see
   docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md, WE6 Plan) and may need
   revisiting if Windows changes it.
+- On macOS, a rebuilt bundle has a new ad hoc signature, so the system may treat
+  it as a new app: if Open at Login stops working after an update, turn it off
+  and on again.
 - The menus are Windows' standard menus. Thyme does not use the undocumented
   calls that make them dark (specification Part 1.2), so they may be light
   while Windows is set to dark.
@@ -167,13 +201,14 @@ label, when the zone is loaded.
 | `internal/settings` | settings type, bounds, defaults, load, save |
 | `internal/render` | one frame into a premultiplied BGRA buffer |
 | `internal/placement` | work area clamping and scale arithmetic |
-| `internal/desktop` | the Windows shell; the only package touching the OS |
+| `internal/desktop` | the shell: `core.go` decides, and the Windows and macOS files carry that out; the only package touching the OS |
 | `cmd/thyme` | the entry point, wiring only |
 | `internal/product` | the product name, once |
 | `third_party/jetbrainsmono` | the vendored font, its licence and digests, and the package that embeds it |
 | `internal/eventlog` | the capped log file, and path free error reasons |
 | `internal/repocheck`, `tools/repocheck` | the import boundary check, the network import check and the prose scan |
-| `tools/sizecheck` | the release exe size budget |
+| `tools/sizecheck` | the release build size budget |
+| `tools/macbundle` | wraps the macOS binary in a signed app bundle, with the icon `internal/render` draws |
 
 ## Where it came from
 

@@ -8,18 +8,21 @@ All commands run from the repository root.
 |---|---|---|
 | Unit tests, all pure packages | `go test -race -count=1 ./...` | CI: ubuntu-24.04, windows-2025; locally on amd64 |
 | Unit tests without the race detector | `go test -count=1 ./...` | CI: windows-11-arm; locally on arm64 Windows |
+| Unit tests on macOS | `go test -race -count=1 ./...` | CI: macos-15; locally on Apple silicon |
 | Formatting | `gofmt -l .` (must print nothing) | CI: every runner |
-| Vet, both operating systems | `GOOS=windows go vet ./...` and `GOOS=linux go vet ./...` | CI: every runner |
+| Vet, every operating system | `GOOS=windows go vet ./...`, `GOOS=linux go vet ./...` and `GOOS=darwin CGO_ENABLED=0 go vet ./...` | CI: every runner |
+| Vet, the macOS shell | `go vet ./...` on a Mac | CI: macos-15 |
 | Static analysis | `go install honnef.co/go/tools/cmd/staticcheck@v0.8.2`, then `GOOS=windows "$(go env GOPATH)/bin/staticcheck" -checks all ./...` and the same with `GOOS=linux` | CI: every runner |
 | Import boundary and prose scan | `go run ./tools/repocheck` | CI: every runner |
 | Settings parser fuzzing | `go test -run='^$' -fuzz='^FuzzParse$' -fuzztime=30s ./internal/settings` | CI: every runner, 30 s per run |
 | Known vulnerabilities | `go install golang.org/x/vuln/cmd/govulncheck@v1.9.0`, then `GOOS=windows "$(go env GOPATH)/bin/govulncheck" ./...` and the same with `GOOS=linux` | CI: every runner |
 | Release builds and size budget | the release build commands in README.md, then `go run ./tools/sizecheck` on both exes (6 MiB each) | CI: every runner |
+| macOS build and bundle | the macOS commands in README.md, then `codesign --verify --strict` on the bundle and `go run ./tools/sizecheck` on the binary | CI: macos-15 |
 | Cross builds | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-H windowsgui" ./...`, and the same with `GOARCH=arm64` | CI: every runner |
 
 The race detector needs cgo on Linux and Windows, so the race runs set
-`CGO_ENABLED=1` and need a C compiler. Shipped builds are always
-`CGO_ENABLED=0`.
+`CGO_ENABLED=1` and need a C compiler. Shipped Windows builds are always
+`CGO_ENABLED=0`; the macOS shell needs cgo (WD12, IMPLEMENTATION_DEVIATIONS.md).
 
 ## The tree wide checks
 
@@ -27,7 +30,7 @@ The race detector needs cgo on Linux and Windows, so the race runs set
 tree and exits non zero on any hit.
 
 - Import boundary: no package outside `internal/desktop` and `cmd/thyme` may
-  import `syscall`, `unsafe` or anything under `golang.org/x/sys`. Every Go
+  import `C`, `syscall`, `unsafe` or anything under `golang.org/x/sys`. Every Go
   file is parsed, test files and files behind build constraints included.
 - Network imports: no package at all, the shell and entry point included, may
   import `net` or anything under it, `crypto/tls`, or anything under
@@ -63,7 +66,31 @@ record is in docs/evaluation/ACTUAL_CONTRACT_EVALUATION.md.
 | `internal/render`, scale steps | golden images of the mock-up at 75, 100, 125, 150 and 200 percent |
 | `internal/desktop`, temporary exe guard | a path inside the temporary folder whatever its case, slashes or trailing separator; not a sibling sharing its first letters, not a path climbing out with "..", never an empty folder; Start with Windows greyed from a temporary exe when off, still available when on |
 | `internal/desktop`, scale | every step enabled with the current one ticked; each Scale command maps to its step and no other command does |
+| `internal/desktop`, shared core | against a fake platform: start up, each menu command and the surface it logs, never saving over a file not understood, start at login from a temporary exe and when unreadable, clamping, the position saved after a drag, a refused DPI whose suggested position is never read, no tray icon left behind |
+| `internal/desktop`, menu labels | each platform's words in the same order |
+| `internal/render`, app icon | golden images at 16, 32, 128 and 256 pixels; a clear margin on the macOS icon grid, the panel colour inside the outline, the hands meeting at the centre; size bounds |
+| `tools/macbundle` | a well formed plist naming the icon, every icon set size iconutil expects, the icns file in the bundle (macOS only), the bundle's layout, replacing an old bundle, refusing a destination that is not a `.app`, leaving the old bundle when the binary is missing |
 | `internal/render`, tray icon | golden images at 16, 20, 24 and 32 pixels; opaque middle, clear corners; size bounds |
+
+## The macOS author gate
+
+What no test here can see, because it needs a person at a Mac. Only the author
+marks it cleared, in HARDWARE_COMPATIBILITY.md.
+
+- The widget matches the mock-up at each Scale step, crisp on Retina.
+- Dragging works and the position survives Quit and relaunch.
+- A click on the glow reaches the widget; a click past it reaches what is behind.
+- Every menu item works from the widget and from the menu bar icon.
+- Always on Top on and off; neither takes focus from the active app.
+- Open at Login on: Thyme starts at the next login. Off in System Settings: the
+  tick goes off.
+
+Set aside by the author on 7 November 2026, and not known to work:
+
+- The widget stays through Show Desktop, Spaces, Mission Control and Stage
+  Manager, and stays on screen when a display is removed.
+- VoiceOver reads the spoken time.
+- After sleep and after a clock change the time is right at once.
 
 ## Golden images
 

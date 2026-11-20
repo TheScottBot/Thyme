@@ -31,17 +31,26 @@ func findEntry(t *testing.T, entries []MenuEntry, command MenuCommand) MenuEntry
 }
 
 func TestBuildMenu_HasTheSpecifiedItemsInOrder(t *testing.T) {
-	entries := BuildMenu(MenuState{Settings: settings.Defaults()})
-
-	expected := []string{"&Seconds", "S&cale", "-", "Always on &top", "Start with &Windows", "Show in t&ray", "-", "E&xit"}
-	summary := topLevelSummary(entries)
-	if len(summary) != len(expected) {
-		t.Fatalf("expected %v, got %v", expected, summary)
+	testCases := []struct {
+		name     string
+		labels   MenuLabels
+		expected []string
+	}{
+		{name: "Windows", labels: windowsMenuLabels, expected: []string{"&Seconds", "S&cale", "-", "Always on &top", "Start with &Windows", "Show in t&ray", "-", "E&xit"}},
+		{name: "macOS", labels: macMenuLabels, expected: []string{"Seconds", "Scale", "-", "Always on Top", "Open at Login", "Show in Menu Bar", "-", "Quit Thyme"}},
 	}
-	for entryIndex := range expected {
-		if summary[entryIndex] != expected[entryIndex] {
-			t.Errorf("entry %d: expected %q, got %q", entryIndex, expected[entryIndex], summary[entryIndex])
-		}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			summary := topLevelSummary(BuildMenu(MenuState{Labels: testCase.labels, Settings: settings.Defaults()}))
+			if len(summary) != len(testCase.expected) {
+				t.Fatalf("expected %v, got %v", testCase.expected, summary)
+			}
+			for entryIndex := range testCase.expected {
+				if summary[entryIndex] != testCase.expected[entryIndex] {
+					t.Errorf("entry %d: expected %q, got %q", entryIndex, testCase.expected[entryIndex], summary[entryIndex])
+				}
+			}
+		})
 	}
 }
 
@@ -50,22 +59,22 @@ func TestBuildMenu_ChecksFollowTheSettingsAndTheRegistry(t *testing.T) {
 		name  string
 		state MenuState
 	}{
-		{name: "defaults, start with Windows off", state: MenuState{Settings: settings.Defaults(), StartWithWindows: false}},
+		{name: "defaults, start with Windows off", state: MenuState{Settings: settings.Defaults(), StartAtLogin: false}},
 		{name: "everything flipped", state: func() MenuState {
 			flipped := settings.Defaults()
 			flipped.ShowSeconds, flipped.AlwaysOnTop, flipped.ShowInTray = false, true, false
-			return MenuState{Settings: flipped, StartWithWindows: true}
+			return MenuState{Settings: flipped, StartAtLogin: true}
 		}()},
 	}
 	for _, testCase := range testCases {
 		t.Run(testCase.name, func(t *testing.T) {
 			entries := BuildMenu(testCase.state)
 			checks := map[MenuCommand]bool{
-				CommandSeconds:          testCase.state.Settings.ShowSeconds,
-				CommandAlwaysOnTop:      testCase.state.Settings.AlwaysOnTop,
-				CommandStartWithWindows: testCase.state.StartWithWindows,
-				CommandShowInTray:       testCase.state.Settings.ShowInTray,
-				CommandExit:             false,
+				CommandSeconds:      testCase.state.Settings.ShowSeconds,
+				CommandAlwaysOnTop:  testCase.state.Settings.AlwaysOnTop,
+				CommandStartAtLogin: testCase.state.StartAtLogin,
+				CommandShowInTray:   testCase.state.Settings.ShowInTray,
+				CommandExit:         false,
 			}
 			for command, expectedChecked := range checks {
 				entry := findEntry(t, entries, command)
@@ -82,10 +91,10 @@ func TestBuildMenu_ChecksFollowTheSettingsAndTheRegistry(t *testing.T) {
 
 // A startup state that could not be read is shown greyed, so the menu never
 // claims a state it does not know.
-func TestBuildMenu_GreysStartWithWindowsWhenItsStateIsUnknown(t *testing.T) {
-	entries := BuildMenu(MenuState{Settings: settings.Defaults(), StartWithWindows: true, StartWithWindowsUnknown: true})
+func TestBuildMenu_GreysStartAtLoginWhenItsStateIsUnknown(t *testing.T) {
+	entries := BuildMenu(MenuState{Settings: settings.Defaults(), StartAtLogin: true, StartAtLoginUnknown: true})
 
-	entry := findEntry(t, entries, CommandStartWithWindows)
+	entry := findEntry(t, entries, CommandStartAtLogin)
 	if entry.Enabled || entry.Checked {
 		t.Errorf("expected greyed and unchecked, got %+v", entry)
 	}

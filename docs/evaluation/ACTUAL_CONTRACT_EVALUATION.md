@@ -1248,3 +1248,14 @@ into `%TEMP%\go-build-guard-check\exe` logged the warning before its start
 line; the same build outside the temporary folder did not. Not covered: a
 temporary folder reached through a symbolic link or junction, which is not
 resolved.)
+
+## macOS port, 7 November 2026
+
+The author moved to an Apple M6 Mac and asked for a native macOS Thyme. The
+specification's WD10 named Windows only, so this extends it by decision.
+
+| Id | Decision | Recorded |
+|---|---|---|
+| WD11 | Extends WD10: macOS 13 or later on arm64 is also supported. For the author's own Macs: built from source, ad hoc signed, not notarised. | 7 November 2026 |
+| WD12 | The macOS shell uses cgo and Objective-C, an exception to shipped builds being `CGO_ENABLED=0`, for macOS only. Recorded in IMPLEMENTATION_DEVIATIONS.md. | 7 November 2026 |
+| WD13 | The portable part of the shell is extracted into a core shared by both platforms, rather than copied. The WE5, WE6 and WE7 author gates are run again on Windows before this reaches main. | 7 November 2026 |

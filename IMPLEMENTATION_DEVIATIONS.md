@@ -108,3 +108,20 @@ covering test.
 - Author's decision: follows the specification; recorded for review.
 - Covering test: none automated; the WE5 author gate checks crisp rendering
   across monitors of different scaling.
+
+## The macOS shell is built with cgo
+
+- Rule: TESTING.md states that shipped builds are always `CGO_ENABLED=0`.
+- Instead: the macOS build sets no such flag. `internal/desktop` holds
+  Objective-C in `appkit_darwin.m`, reached through cgo, and that file and the
+  Go files that call it build only under `darwin && cgo`. Windows builds are
+  still `CGO_ENABLED=0`.
+- Why: AppKit is an Objective-C framework. A window needs subclasses and
+  delegates that call back into Thyme, which from pure Go would mean a third
+  party dependency and hand written runtime calls. Consequence: macOS builds
+  run on a Mac, not from any host. Without cgo, darwin builds the same stub as
+  any other host, so the module still builds and vets everywhere.
+- Author's decision: 7 November 2026, WD12.
+- Covering test: `go vet` with `GOOS=darwin CGO_ENABLED=0` in CI; `"C"` is a
+  forbidden import outside the shell, proven by
+  `TestFindForbiddenImports_FlagsEveryForbiddenImportInPurePackages`.

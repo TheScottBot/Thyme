@@ -31,7 +31,7 @@ func checkRepository(repositoryRoot string) int {
 		return 2
 	}
 	for _, violation := range importViolations {
-		fmt.Printf("%s: forbidden import '%s' outside the Windows shell\n", violation.FilePath, violation.ImportPath)
+		fmt.Printf("%s: forbidden import '%s' outside the shell\n", violation.FilePath, violation.ImportPath)
 		failureCount++
 	}
 

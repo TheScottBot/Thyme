@@ -21,8 +21,9 @@ var shellPackageDirectories = []string{
 
 // forbiddenImportPaths lists imports that tie a package to an operating system
 // or bypass memory safety. Each also forbids every path beneath it, so a new
-// x/sys subpackage needs no change here.
-var forbiddenImportPaths = []string{"syscall", "unsafe", "golang.org/x/sys"}
+// x/sys subpackage needs no change here. "C" is cgo, which only the macOS shell
+// uses (WD12).
+var forbiddenImportPaths = []string{"C", "syscall", "unsafe", "golang.org/x/sys"}
 
 // ImportViolation names one forbidden import in a package outside the shell.
 type ImportViolation struct {

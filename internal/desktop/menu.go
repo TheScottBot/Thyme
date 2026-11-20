@@ -22,7 +22,7 @@ type MenuCommand int
 const (
 	CommandSeconds MenuCommand = iota + 1
 	CommandAlwaysOnTop
-	CommandStartWithWindows
+	CommandStartAtLogin
 	CommandShowInTray
 	CommandExit
 
@@ -41,26 +41,50 @@ type MenuEntry struct {
 	Children []MenuEntry
 }
 
-// MenuState is everything the menu shows. Start with Windows comes from the
-// registry, read each time the menu opens; Unknown means that read failed.
+// MenuState is everything the menu shows. Start at login comes from the
+// operating system, read each time the menu opens; Unknown means that read
+// failed.
 type MenuState struct {
-	Settings                settings.Settings
-	StartWithWindows        bool
-	StartWithWindowsUnknown bool
+	Labels              MenuLabels
+	Settings            settings.Settings
+	StartAtLogin        bool
+	StartAtLoginUnknown bool
 
-	StartWithWindowsFromTemporaryExe bool
+	StartAtLoginFromTemporaryExe bool
 }
 
-// The labels carry an ampersand before their access key, so every item can be
-// chosen from the keyboard once the menu is open (datum 0.16, WD9). English
-// only (WD7).
-const (
-	labelSeconds          = "&Seconds"
-	labelScale            = "S&cale"
-	labelAlwaysOnTop      = "Always on &top"
-	labelStartWithWindows = "Start with &Windows"
-	labelShowInTray       = "Show in t&ray"
-	labelExit             = "E&xit"
+// MenuLabels is the text of the menu's lines, which is all that differs
+// between platforms: same items, same order, each platform's own words.
+type MenuLabels struct {
+	Seconds      string
+	Scale        string
+	AlwaysOnTop  string
+	StartAtLogin string
+	ShowInTray   string
+	Exit         string
+}
+
+// The Windows labels carry an ampersand before their access key, so every item
+// can be chosen from the keyboard once the menu is open (datum 0.16, WD9). The
+// macOS labels carry none, because macOS menus are searched by typing instead.
+// English only (WD7).
+var (
+	windowsMenuLabels = MenuLabels{
+		Seconds:      "&Seconds",
+		Scale:        "S&cale",
+		AlwaysOnTop:  "Always on &top",
+		StartAtLogin: "Start with &Windows",
+		ShowInTray:   "Show in t&ray",
+		Exit:         "E&xit",
+	}
+	macMenuLabels = MenuLabels{
+		Seconds:      "Seconds",
+		Scale:        "Scale",
+		AlwaysOnTop:  "Always on Top",
+		StartAtLogin: "Open at Login",
+		ShowInTray:   "Show in Menu Bar",
+		Exit:         "Quit Thyme",
+	}
 )
 
 func toggle(label string, command MenuCommand, checked bool) MenuEntry {
@@ -81,26 +105,27 @@ func BuildMenu(state MenuState) []MenuEntry {
 			Enabled: true,
 		})
 	}
-	startWithWindows := toggle(labelStartWithWindows, CommandStartWithWindows, state.StartWithWindows)
-	if state.StartWithWindowsUnknown {
-		startWithWindows.Checked, startWithWindows.Enabled = false, false
+	labels := state.Labels
+	startAtLogin := toggle(labels.StartAtLogin, CommandStartAtLogin, state.StartAtLogin)
+	if state.StartAtLoginUnknown {
+		startAtLogin.Checked, startAtLogin.Enabled = false, false
 	}
-	// From a temporary exe (go run, or a zip opened in Explorer) the Run
-	// value would name a file that is soon deleted: a sign in entry pointing
-	// at nothing, which anything could later fill. It can be turned off, so
-	// an existing entry is never trapped, but not on.
-	if state.StartWithWindowsFromTemporaryExe && !startWithWindows.Checked {
-		startWithWindows.Enabled = false
+	// From a temporary exe (go run, or a zip opened in Explorer) the entry
+	// would name a file that is soon deleted: a sign in entry pointing at
+	// nothing, which anything could later fill. It can be turned off, so an
+	// existing entry is never trapped, but not on.
+	if state.StartAtLoginFromTemporaryExe && !startAtLogin.Checked {
+		startAtLogin.Enabled = false
 	}
 	return []MenuEntry{
-		toggle(labelSeconds, CommandSeconds, state.Settings.ShowSeconds),
-		{Kind: MenuSubmenu, Label: labelScale, Enabled: true, Children: scaleEntries},
+		toggle(labels.Seconds, CommandSeconds, state.Settings.ShowSeconds),
+		{Kind: MenuSubmenu, Label: labels.Scale, Enabled: true, Children: scaleEntries},
 		{Kind: MenuSeparator},
-		toggle(labelAlwaysOnTop, CommandAlwaysOnTop, state.Settings.AlwaysOnTop),
-		startWithWindows,
-		toggle(labelShowInTray, CommandShowInTray, state.Settings.ShowInTray),
+		toggle(labels.AlwaysOnTop, CommandAlwaysOnTop, state.Settings.AlwaysOnTop),
+		startAtLogin,
+		toggle(labels.ShowInTray, CommandShowInTray, state.Settings.ShowInTray),
 		{Kind: MenuSeparator},
-		{Kind: MenuItem, Label: labelExit, Command: CommandExit, Enabled: true},
+		{Kind: MenuItem, Label: labels.Exit, Command: CommandExit, Enabled: true},
 	}
 }
 

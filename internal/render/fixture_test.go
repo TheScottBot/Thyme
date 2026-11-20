@@ -91,6 +91,13 @@ func goldenPath(goldenName string) string {
 // tolerance means the same thing at every alpha.
 func compareWithGolden(t *testing.T, goldenName string, frame Frame) {
 	t.Helper()
+	compareWithGoldenWithin(t, goldenName, frame, goldenChannelTolerance)
+}
+
+// compareWithGoldenWithin is compareWithGolden with a tolerance of its own,
+// for a picture whose cross architecture difference was measured separately.
+func compareWithGoldenWithin(t *testing.T, goldenName string, frame Frame, channelTolerance int) {
+	t.Helper()
 	rendered := frameToRGBA(frame)
 	if *updateGoldenImages {
 		writePNGOrFail(t, goldenPath(goldenName), rendered)
@@ -117,7 +124,7 @@ func compareWithGolden(t *testing.T, goldenName string, frame Frame) {
 		if difference < 0 {
 			difference = -difference
 		}
-		if difference > goldenChannelTolerance {
+		if difference > channelTolerance {
 			differingBytes++
 		}
 		largestDifference = max(largestDifference, difference)
@@ -126,7 +133,7 @@ func compareWithGolden(t *testing.T, goldenName string, frame Frame) {
 		failurePath := filepath.Join(t.TempDir(), goldenName+".actual.png")
 		writePNGOrFail(t, failurePath, rendered)
 		t.Errorf("%d bytes differ from the golden image by more than %d (largest %d); rendered image written to %s",
-			differingBytes, goldenChannelTolerance, largestDifference, failurePath)
+			differingBytes, channelTolerance, largestDifference, failurePath)
 	}
 }
 

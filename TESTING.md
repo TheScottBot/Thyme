@@ -97,7 +97,9 @@ Set aside by the author on 7 November 2026, and not known to work:
 `internal/render/testdata/golden` holds one PNG per case. They are compared
 in premultiplied RGBA with a tolerance of 2 per channel: measured in WE4, glyph
 rasterisation differs between arm64 and amd64 by at most 2 of 255 in a handful
-of bytes, while shapes are byte identical. A failing comparison writes the
+of bytes, while shapes are byte identical. The app icon's goldens allow 3: on
+20 November 2026 the 256 pixel icon differed by 3 in 4 bytes on the amd64
+runners, its large curves rounding a little differently by architecture. A failing comparison writes the
 rendered image to the test's temporary folder and names it.
 
 To rewrite them after an intended visual change:

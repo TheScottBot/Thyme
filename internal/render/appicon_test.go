@@ -21,10 +21,17 @@ func appIconFrameOrFail(t *testing.T, sizePixels int) Frame {
 	return Frame{Width: sizePixels, Height: sizePixels, Pixels: pixels, PanelBounds: icon.Bounds()}
 }
 
+// appIconChannelTolerance was measured on CI on 20 November 2026: the 256
+// pixel icon, golden on arm64, differed on the amd64 runners by 3 of 255 in 4
+// bytes. Its long curved edges round a little differently by architecture,
+// most likely because Go may fuse multiply and add on arm64 but not on amd64;
+// the clock face keeps goldenChannelTolerance, measured in WE4.
+const appIconChannelTolerance = 3
+
 func TestRenderAppIcon_GoldenAtIconSetSizes(t *testing.T) {
 	for _, sizePixels := range []int{16, 32, 128, 256} {
 		t.Run(fmt.Sprintf("%d pixels", sizePixels), func(t *testing.T) {
-			compareWithGolden(t, fmt.Sprintf("appicon_%d", sizePixels), appIconFrameOrFail(t, sizePixels))
+			compareWithGoldenWithin(t, fmt.Sprintf("appicon_%d", sizePixels), appIconFrameOrFail(t, sizePixels), appIconChannelTolerance)
 		})
 	}
 }
